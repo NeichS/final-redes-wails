@@ -30,13 +30,13 @@ function App() {
               {/* this hidden checkbox controls the state */}
               <input type="checkbox" onClick={() => setRecibir((v) => !v)} />
               <Icon
-                className="swap-on text-primary"
+                className="swap-off text-primary"
                 icon="ic:sharp-call-received"
                 width="32"
                 height="32"
               />
               <Icon
-                className="swap-off text-primary"
+                className="swap-on text-primary"
                 icon="ic:baseline-send"
                 width="32"
                 height="32"
