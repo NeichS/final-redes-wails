@@ -4,14 +4,9 @@ import { Greet, Testing } from "../../wailsjs/go/main/App";
 import { Icon } from "@iconify/react";
 
 function App() {
-  const [resultText, setResultText] = useState(
-    "Please enter your name below 👇"
-  );
   const [name, setName] = useState("");
-  const [msg, setMsg] = useState("Not tested yet");
-  const [modo, setModo] = useState("Transmitir"); // Estado del switch
+  const [recibir, setRecibir] = useState(false); //si recibir = false, es transmision
 
-  const updateName = (e) => setName(e.target.value);
   const updateResultText = (result) => setResultText(result);
 
   function greet() {
@@ -20,50 +15,36 @@ function App() {
   }
 
   return (
-    <div id="App">
-      <h1 className="text-secondary">Transfiera o reciba su archivo</h1>
-
-      <div className="switch-container">
-        <label>
-          <input
-            type="radio"
-            value="Recibir"
-            checked={modo === "Recibir"}
-            onChange={(e) => setModo(e.target.value)}
-          />
-          Recibir
-          <Icon icon="ic:baseline-call-received" width="24" height="24" />
-        </label>
-        <label>
-          <input
-            type="radio"
-            value="Transmitir"
-            checked={modo === "Transmitir"}
-            onChange={(e) => setModo(e.target.value)}
-          />
-          Transmitir
-          <Icon icon="ic:baseline-send" width="24" height="24" />
-        </label>
+    <div
+      data-theme="synthwave"
+      className="flex flex-col min-h-screen bg-base-200"
+    >
+      <div className="container mx-auto flex-col justify-center items-center flex-1 flex gap-4">
+        <h1 className="text-primary">Transfiera o reciba su archivo</h1>
+        <div>
+          <div className="flex-1 flex flex-row justify-center items-center gap-4">
+            <span className="badge badge-lg">
+              {recibir ? "Receptor" : "Transmisor"}
+            </span>
+            <label className="swap swap-rotate bg-primary-content btn">
+              {/* this hidden checkbox controls the state */}
+              <input type="checkbox" onClick={() => setRecibir((v) => !v)} />
+              <Icon
+                className="swap-on text-primary"
+                icon="ic:sharp-call-received"
+                width="32"
+                height="32"
+              />
+              <Icon
+                className="swap-off text-primary"
+                icon="ic:baseline-send"
+                width="32"
+                height="32"
+              />
+            </label>
+          </div>
+        </div>
       </div>
-      {modo === "Transmitir" ? (
-        <div>
-          <div className="mode-header">
-            <h3>Modo</h3>
-            <h3 className="mode-text">Transmisor</h3>
-          </div>
-          <p>Seleccione el archivo que desea enviar.</p>
-          <input type="file" />
-        </div>
-      ) : (
-        <div>
-          <div className="mode-header">
-            <h3>Modo</h3>
-            <h3 className="mode-text">Receptor</h3>
-          </div>
-          <p>Esperando conexión para recibir archivo...</p>
-          <button className="btn btn-primary">Iniciar recepción</button>
-        </div>
-      )}
     </div>
   );
 }

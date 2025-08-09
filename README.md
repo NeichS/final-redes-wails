@@ -17,3 +17,25 @@ to this in your browser, and you can call your Go code from devtools.
 ## Building
 
 To build a redistributable, production mode package, use `wails build`.
+
+
+## Paleta
+
+| Token de color        | Uso típico                                                 |
+| --------------------- | ---------------------------------------------------------- |
+| **primary**           | Color principal de la interfaz (botones destacados, links) |
+| **primary-content**   | Color del texto/iconos que van sobre `primary`             |
+| **secondary**         | Color secundario para diferenciar acciones o elementos     |
+| **secondary-content** | Texto sobre fondo `secondary`                              |
+| **accent**            | Color de acento o énfasis                                  |
+| **accent-content**    | Texto sobre fondo `accent`                                 |
+| **neutral**           | Fondo/elementos neutros (gris, etc.)                       |
+| **neutral-content**   | Texto sobre fondo `neutral`                                |
+| **base-100**          | Color de fondo principal                                   |
+| **base-200**          | Fondo un poco más oscuro que `base-100`                    |
+| **base-300**          | Fondo aún más oscuro, para separar secciones               |
+| **base-content**      | Texto principal sobre fondos `base-*`                      |
+| **info**              | Estados informativos                                       |
+| **success**           | Estados de éxito                                           |
+| **warning**           | Advertencias                                               |
+| **error**             | Errores o estados destructivos                             |
