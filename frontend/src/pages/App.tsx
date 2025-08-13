@@ -1,12 +1,13 @@
 import { useState, useRef } from "react";
 import "../styles/App.css";
-import { Greet, Testing } from "../../wailsjs/go/main/App.js";
 import { Icon } from "@iconify/react";
+
 
 function App() {
   const [recibir, setRecibir] = useState(false); //si recibir = false, es transmision
   const [tcp, setTcp] = useState(false); //si tcp = false, es udp
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [addr, setAddr] = useState<string>("");
 
   const limpiarArchivos = () => {
     if (fileInputRef.current) {
@@ -17,7 +18,6 @@ function App() {
   const switchTcpUdp = () => {
     setTcp((prev) => !prev);
   };
-
   return (
     <div
       data-theme="synthwave"
@@ -62,6 +62,7 @@ function App() {
                   type="text"
                   className="input"
                   placeholder="0.0.0.0:0000"
+                  onChange={(e) => setAddr(e.target.value)}
                 />
                 <p className="label">
                   Ingrese la direccion del host a conectarse
@@ -106,8 +107,15 @@ function App() {
               </div>
 
               <div>
-                <button className="btn btn-primary text-primary-content">Enviar
-                  <Icon icon="material-symbols:send-outline" width="24" height="24" />
+                <button
+                  className="btn btn-primary text-primary-content"
+                >
+                  Enviar
+                  <Icon
+                    icon="material-symbols:send-outline"
+                    width="24"
+                    height="24"
+                  />
                 </button>
               </div>
             </div>

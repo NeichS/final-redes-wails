@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -17,15 +17,11 @@ func NewApp() *App {
 
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
+func (a *App) StartContext(ctx context.Context) {
 	a.ctx = ctx
 }
 
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
-}
-
-func (a *App) Testing() string {
-	return "Testing"
 }
