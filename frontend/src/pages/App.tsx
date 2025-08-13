@@ -47,7 +47,6 @@ function App() {
               />
             </label>
           </div>
-
           {recibir ? (
             <div className="flex flex-row justify-center items-center gap-4">
               <p className="label">Esperando archivo en puerto 8080</p>
@@ -56,7 +55,7 @@ function App() {
           ) : (
             <div className="flex gap-4 flex-col justify-center items-center">
               <fieldset className="fieldset">
-                <legend className="fieldset-legend text-secondary">
+                <legend className="fieldset-legend text-secondary text-center">
                   Direccion host
                 </legend>
                 <input
@@ -104,6 +103,12 @@ function App() {
                     height="32"
                   />
                 </label>
+              </div>
+
+              <div>
+                <button className="btn btn-primary text-primary-content">Enviar
+                  <Icon icon="material-symbols:send-outline" width="24" height="24" />
+                </button>
               </div>
             </div>
           )}
