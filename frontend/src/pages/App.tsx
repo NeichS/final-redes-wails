@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
 import "../styles/App.css";
-import { Greet, Testing } from "../../wailsjs/go/main/App";
+import { Greet, Testing } from "../../wailsjs/go/main/App.js";
 import { Icon } from "@iconify/react";
 
 function App() {
-  const [name, setName] = useState("");
   const [recibir, setRecibir] = useState(false); //si recibir = false, es transmision
   const [tcp, setTcp] = useState(false); //si tcp = false, es udp
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const limpiarArchivos = () => {
     if (fileInputRef.current) {
@@ -15,16 +14,9 @@ function App() {
     }
   };
 
-  const updateResultText = (result) => setResultText(result);
-
   const switchTcpUdp = () => {
     setTcp((prev) => !prev);
   };
-
-  function greet() {
-    Greet(name).then(updateResultText);
-    Testing().then(setMsg);
-  }
 
   return (
     <div
@@ -98,19 +90,16 @@ function App() {
                 </span>
                 <label className="swap swap-rotate bg-primary-content btn">
                   {/* this hidden checkbox controls the state */}
-                  <input
-                    type="checkbox"
-                    onClick={switchTcpUdp}
-                  />
+                  <input type="checkbox" onClick={switchTcpUdp} />
                   <Icon
                     className="swap-on text-primary"
-                    icon="material-symbols:handshake-outline"
+                    icon="tabler:cube-send"
                     width="32"
                     height="32"
                   />
                   <Icon
                     className="swap-off text-primary"
-                    icon="tabler:cube-send"
+                    icon="material-symbols:handshake-outline"
                     width="32"
                     height="32"
                   />
