@@ -13,24 +13,31 @@ import (
 )
 
 //go:embed all:frontend/dist
-var Assets embed.FS
+var assets embed.FS
 
 func main() {
 	// Create an instance of the app structure
 	app := app.NewApp()
 	server := &sv.FileServer{}
-	client := &client.Receiver{}
+	client := &client.Client{}
+
+	dragAndDrop := &options.DragAndDrop{
+		EnableFileDrop:     true,
+		DisableWebViewDrop: true,
+	}
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "File transfer",
-		Width:  1024,
-		Height: 768,
+		Title:       "File transfer app",
+		Width:       1024,
+		Height:      768,
+		DragAndDrop: dragAndDrop,
 		AssetServer: &assetserver.Options{
-			Assets: Assets,
+			Assets: assets,
 		},
+
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        func(ctx context.Context) {
+		OnStartup: func(ctx context.Context) {
 			app.StartContext(ctx)
 			server.StartContext(ctx)
 		},

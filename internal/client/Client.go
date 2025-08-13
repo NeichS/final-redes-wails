@@ -3,7 +3,7 @@ package client
 import "net"
 
 
-type Receiver struct {
+type Client struct {
 	Host net.IP
 }
 

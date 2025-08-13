@@ -7,3 +7,16 @@ h1 {
   font-size: 24px;
   font-weight: 600;
 }
+
+#drop-target {
+  --wails-drop-target: drop;
+}
+
+
+.wails-drop-target-active {
+  outline: 3px solid var(--color-primary, #ff5280) !important;
+  outline-offset: 2px;
+}
+
+
+

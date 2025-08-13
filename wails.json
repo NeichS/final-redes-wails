@@ -2,16 +2,10 @@
   "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "final-redes-wails",
   "outputfilename": "final-redes-wails",
-  "frontend": {
-    "dir": "frontend",
-    "install": "npm install",
-    "build": "npm run build",
-    "dev": {
-      "watcher": "npm run dev",
-      "serverUrl": "auto"
-    }
-  },
-  
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
   "author": {
     "name": "Ignacio Sanchez",
     "email": "nachoagusss1@gmail.com"
