@@ -4,16 +4,27 @@ import { Icon } from "@iconify/react";
 import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime.js";
 import { SendFile } from "../../wailsjs/go/server/FileServer.js";
 
+interface FileInfo {
+  address : string;
+  tcp : boolean;
+  paths : string[];
+}
+
 function App() {
   const [recibir, setRecibir] = useState(false); // false=Transmitir, true=Recibir
-  const [tcp, setTcp] = useState(true); // true=TCP, false=UDP
-  const [addr, setAddr] = useState<string>("");
-  const [paths, setPaths] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileInfo, setFileInfo] = useState<FileInfo>({
+    address: "",
+    tcp: true,
+    paths: []
+  });
 
   // util: evitar duplicados si el usuario arrastra varias veces lo mismo
   const addPaths = (incoming: string[]) => {
-    setPaths((prev) => Array.from(new Set([...prev, ...incoming])));
+    setFileInfo(prev => ({
+      ...prev,
+      paths: Array.from(new Set([...prev.paths, ...incoming]))
+    }));
   };
 
    useEffect(() => {
@@ -24,7 +35,10 @@ function App() {
   }, []);
 
 
-  const limpiar = () => setPaths([]);
+  const limpiarPaths = () => setFileInfo((prev) => ({
+    ...prev,
+    paths: []
+  }));
 
   const abrirFilePicker = () => fileInputRef.current?.click();
 
@@ -40,13 +54,13 @@ function App() {
 
 
   const enviar = async () => {
-    if (!addr.trim() || paths.length === 0) return;
+    if (!fileInfo.address.trim() || fileInfo.paths.length === 0) return;
     try {
       // Llama a tu backend Go que hace streaming por rutas
-      await SendFile(addr.trim(), tcp, paths);
+      await SendFile(fileInfo);
       // feedback al usuario…
       // toast ok, limpiar paths, etc.
-      setPaths([]);
+      limpiarPaths();
     } catch (err) {
       console.error(err);
       // toast de error
@@ -100,13 +114,13 @@ function App() {
             {/* TCP/UDP */}
             <div className="flex items-center gap-4">
               <span className="badge badge-lg bg-secondary-content text-secondary">
-                {tcp ? "TCP" : "UDP"}
+                {fileInfo.tcp ? "TCP" : "UDP"}
               </span>
               <label className="swap swap-rotate bg-primary-content btn">
                 <input
                   type="checkbox"
-                  checked={tcp}
-                  onChange={(e) => setTcp(e.target.checked)}
+                  checked={fileInfo.tcp}
+                  onChange={(e) => setFileInfo(prev => ({ ...prev, tcp: e.target.checked }))}
                 />
                 <Icon
                   className="swap-on text-primary"
@@ -132,8 +146,8 @@ function App() {
                 type="text"
                 className="input"
                 placeholder="127.0.0.1:8080"
-                value={addr}
-                onChange={(e) => setAddr(e.target.value)}
+                value={fileInfo.address}
+                onChange={(e) => setFileInfo(prev => ({ ...prev, address: e.target.value }))}
               />
               <p className="label">
                 Ingrese la dirección del host a conectarse
@@ -160,14 +174,14 @@ function App() {
                 onChange={onFileInputChange}
               />
             </button>
-            <button type="button" className="btn btn-error" onClick={limpiar}>
+            <button type="button" className="btn btn-error" onClick={limpiarPaths}>
               <Icon icon="mdi:file-remove-outline" width="20" height="20" />
               Limpiar
             </button>
 
             {/* Lista seleccionada */}
             <ul className="w-full max-w-xl list-disc pl-6 text-center">
-              {paths.map((p, i) => (
+              {fileInfo.paths.map((p, i) => (
                 <li key={i} className="truncate">
                   {p}
                 </li>
@@ -179,7 +193,7 @@ function App() {
               <button
                 className="btn btn-primary text-primary-content"
                 onClick={enviar}
-                disabled={!addr.trim() || paths.length === 0}
+                disabled={!fileInfo.address.trim() || fileInfo.paths.length === 0}
               >
                 Enviar
                 <Icon
