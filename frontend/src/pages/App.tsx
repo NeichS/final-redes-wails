@@ -5,9 +5,10 @@ import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime.js";
 import { SendFile } from "../../wailsjs/go/server/FileServer.js";
 
 interface FileInfo {
-  address : string;
-  tcp : boolean;
-  paths : string[];
+  address: string;
+  port: string;
+  tcp: boolean;
+  paths: string[];
 }
 
 function App() {
@@ -15,30 +16,31 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo>({
     address: "",
+    port: "8080",
     tcp: true,
-    paths: []
+    paths: [],
   });
 
   // util: evitar duplicados si el usuario arrastra varias veces lo mismo
   const addPaths = (incoming: string[]) => {
-    setFileInfo(prev => ({
+    setFileInfo((prev) => ({
       ...prev,
-      paths: Array.from(new Set([...prev.paths, ...incoming]))
+      paths: Array.from(new Set([...prev.paths, ...incoming])),
     }));
   };
 
-   useEffect(() => {
+  useEffect(() => {
     OnFileDrop((x, y, paths) => {
       console.log(x, y, "Dropped files: ", paths);
     }, true);
     return () => OnFileDropOff();
   }, []);
 
-
-  const limpiarPaths = () => setFileInfo((prev) => ({
-    ...prev,
-    paths: []
-  }));
+  const limpiarPaths = () =>
+    setFileInfo((prev) => ({
+      ...prev,
+      paths: [],
+    }));
 
   const abrirFilePicker = () => fileInputRef.current?.click();
 
@@ -50,8 +52,6 @@ function App() {
     // opcional: limpiar el input para poder volver a elegir lo mismo después
     e.target.value = "";
   };
-
-
 
   const enviar = async () => {
     if (!fileInfo.address.trim() || fileInfo.paths.length === 0) return;
@@ -67,7 +67,6 @@ function App() {
     }
   };
 
-  
   return (
     <div
       data-theme="synthwave"
@@ -120,42 +119,65 @@ function App() {
                 <input
                   type="checkbox"
                   checked={fileInfo.tcp}
-                  onChange={(e) => setFileInfo(prev => ({ ...prev, tcp: e.target.checked }))}
+                  onChange={(e) =>
+                    setFileInfo((prev) => ({ ...prev, tcp: e.target.checked }))
+                  }
                 />
                 <Icon
-                  className="swap-on text-primary"
+                  className="swap-off text-primary"
                   icon="tabler:cube-send"
                   width="32"
                   height="32"
                 />
                 <Icon
-                  className="swap-off text-primary"
+                  className="swap-on text-primary"
                   icon="material-symbols:handshake-outline"
                   width="32"
                   height="32"
                 />
               </label>
-            </div>  
+            </div>
             {/* Dirección */}
 
-            <fieldset className="fieldset">
+            <fieldset className="fieldset flex flex-col items-center justify-center text-center">
               <legend className="fieldset-legend text-secondary text-center">
                 Dirección destino
               </legend>
-              <input
-                type="text"
-                className="input"
-                placeholder="127.0.0.1:8080"
-                value={fileInfo.address}
-                onChange={(e) => setFileInfo(prev => ({ ...prev, address: e.target.value }))}
-              />
+              <div className="flex flex-row items-center justify-center">
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="127.0.0.1"
+                  value={fileInfo.address}
+                  onChange={(e) =>
+                    setFileInfo((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                    }))
+                  }
+                />
+                <input
+                  type="number"
+                  className="input flex-1"
+                  placeholder="8080"
+                  maxLength={5}
+                  value={fileInfo.port}
+                  onChange={(e) =>
+                    setFileInfo((prev) => ({ ...prev, port: e.target.value }))
+                  }
+                />
+              </div>
               <p className="label">
                 Ingrese la dirección del host a conectarse
               </p>
             </fieldset>
 
             {/* Zona de DROP (visible) */}
-            <button className="w-full max-w-xl border-2 border-dashed rounded-xl p-8 flex flex-col items-center text-center gap-2 transition bg-base-100" onClick={abrirFilePicker} style={{ "--wails-drop-target": "drop" } as React.CSSProperties}>
+            <button
+              className="w-full max-w-xl border-2 border-dashed rounded-xl p-8 flex flex-col items-center text-center gap-2 transition bg-base-100"
+              onClick={abrirFilePicker}
+              style={{ "--wails-drop-target": "drop" } as React.CSSProperties}
+            >
               <p className="text-base-content/70">
                 Arrastre aqui o clickee para examinar
               </p>
@@ -174,7 +196,11 @@ function App() {
                 onChange={onFileInputChange}
               />
             </button>
-            <button type="button" className="btn btn-error" onClick={limpiarPaths}>
+            <button
+              type="button"
+              className="btn btn-error"
+              onClick={limpiarPaths}
+            >
               <Icon icon="mdi:file-remove-outline" width="20" height="20" />
               Limpiar
             </button>
@@ -193,7 +219,9 @@ function App() {
               <button
                 className="btn btn-primary text-primary-content"
                 onClick={enviar}
-                disabled={!fileInfo.address.trim() || fileInfo.paths.length === 0}
+                disabled={
+                  !fileInfo.address.trim() || fileInfo.paths.length === 0
+                }
               >
                 Enviar
                 <Icon

@@ -39,3 +39,5 @@ To build a redistributable, production mode package, use `wails build`.
 | **success**           | Estados de éxito                                           |
 | **warning**           | Advertencias                                               |
 | **error**             | Errores o estados destructivos                             |
+
+
