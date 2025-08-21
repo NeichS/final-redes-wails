@@ -1,13 +1,13 @@
 export namespace server {
 	
-	export class FileServerInfo {
+	export class FileSenderInfo {
 	    Address: string;
 	    Port: string;
 	    TCP: boolean;
 	    Paths: string[];
 	
 	    static createFrom(source: any = {}) {
-	        return new FileServerInfo(source);
+	        return new FileSenderInfo(source);
 	    }
 	
 	    constructor(source: any = {}) {

@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import "../styles/App.css";
 import { Icon } from "@iconify/react";
 import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime.js";
-import { SendFile } from "../../wailsjs/go/server/FileServer.js";
-
+import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
 interface FileInfo {
   address: string;
   port: string;
@@ -57,7 +56,7 @@ function App() {
     if (!fileInfo.address.trim() || fileInfo.paths.length === 0) return;
     try {
       // Llama a tu backend Go que hace streaming por rutas
-      await SendFile(fileInfo);
+      await SendFileHandler(fileInfo);
       // feedback al usuario…
       // toast ok, limpiar paths, etc.
       limpiarPaths();
