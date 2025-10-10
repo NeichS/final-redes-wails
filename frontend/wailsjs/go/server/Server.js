@@ -9,3 +9,7 @@ export function ReceiveFileHandler() {
 export function StartContext(arg1) {
   return window['go']['server']['Server']['StartContext'](arg1);
 }
+
+export function StopServerHandler() {
+  return window['go']['server']['Server']['StopServerHandler']();
+}

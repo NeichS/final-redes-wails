@@ -5,3 +5,5 @@ import {context} from '../models';
 export function ReceiveFileHandler():Promise<string>;
 
 export function StartContext(arg1:context.Context):Promise<void>;
+
+export function StopServerHandler():Promise<void>;

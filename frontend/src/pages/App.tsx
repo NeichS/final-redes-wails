@@ -3,6 +3,8 @@ import "../styles/App.css";
 import { Icon } from "@iconify/react";
 import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime.js";
 import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
+import { ReceiveFileHandler } from "../../wailsjs/go/server/Server.js";
+import { StopServerHandler } from "../../wailsjs/go/server/Server.js";
 interface FileInfo {
   address: string;
   port: string;
@@ -12,6 +14,7 @@ interface FileInfo {
 
 function App() {
   const [recibir, setRecibir] = useState(false); // false=Transmitir, true=Recibir
+  const [serverOn, setServerOn] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo>({
     address: "",
@@ -66,6 +69,30 @@ function App() {
     }
   };
 
+  const handleMode = async () => {
+    if (!recibir) {
+      setRecibir(true);
+      startServer();
+    } else {
+      setRecibir(false);
+      await StopServerHandler();
+    }
+  };
+
+  const startServer = async () => {
+    if (serverOn) return;
+    setServerOn(true);
+    try {
+      console.log("Iniciando servidor...");
+      await ReceiveFileHandler();
+      setServerOn(false);
+      console.log("El servidor se detuvo o el archivo fue recibido.");
+    } catch (err) {
+      console.error(err);
+      setServerOn(false);
+    }
+  };
+
   return (
     <div
       data-theme="synthwave"
@@ -81,11 +108,7 @@ function App() {
               {recibir ? "Receptor" : "Transmisor"}
             </span>
             <label className="swap swap-rotate bg-primary-content btn">
-              <input
-                type="checkbox"
-                checked={recibir}
-                onChange={(e) => setRecibir(e.target.checked)}
-              />
+              <input type="checkbox" checked={recibir} onChange={handleMode} />
               <Icon
                 className="swap-on text-primary"
                 icon="ic:sharp-call-received"
