@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "../styles/App.css";
 import { Icon } from "@iconify/react";
-import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime.js";
+import {
+  OnFileDrop,
+  OnFileDropOff,
+  EventsOn,
+  EventsOff,
+} from "../../wailsjs/runtime/runtime.js";
 import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
-import { ReceiveFileHandler } from "../../wailsjs/go/server/Server.js";
-import { StopServerHandler } from "../../wailsjs/go/server/Server.js";
+import { ReceiveFileHandler, StopServerHandler } from "../../wailsjs/go/server/Server.js";
 import { SelectFile } from "../../wailsjs/go/app/App.js";
+
 interface FileInfo {
   address: string;
   port: string;
@@ -13,10 +18,16 @@ interface FileInfo {
   paths: string[];
 }
 
+// Paso 1: Definir la estructura de un mensaje de evento
+interface EventMessage {
+  id: number;
+  text: string;
+  type: 'success' | 'error' | 'info';
+}
+
 function App() {
-  const [recibir, setRecibir] = useState(false); // false=Transmitir, true=Recibir
+  const [recibir, setRecibir] = useState(false);
   const [serverOn, setServerOn] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo>({
     address: "",
     port: "8080",
@@ -24,7 +35,50 @@ function App() {
     paths: [],
   });
 
-  // util: evitar duplicados si el usuario arrastra varias veces lo mismo
+  const [events, setEvents] = useState<EventMessage[]>([]);
+
+  // Paso 2: Función auxiliar para añadir y quitar eventos de la cola
+  const addEvent = (text: string, type: EventMessage['type']) => {
+    const newEvent: EventMessage = {
+      id: Date.now() + Math.random(),
+      text,
+      type,
+    };
+
+    // Añadimos el nuevo evento a la lista
+    setEvents(prevEvents => [...prevEvents, newEvent]);
+
+    // Programamos que el evento se elimine después de 5 segundos
+    setTimeout(() => {
+      setEvents(prevEvents => prevEvents.filter(e => e.id !== newEvent.id));
+    }, 5000);
+  };
+  
+  // Paso 3: Actualizar los listeners para que usen la nueva función `addEvent`
+  useEffect(() => {
+    EventsOn("reception-started", (fileName) => {
+      addEvent(`Recibiendo archivo: ${fileName}...`, 'info');
+    });
+
+    EventsOn("reception-finished", (message) => {
+      addEvent(message, 'success');
+    });
+
+    EventsOn("client-error", (message) => {
+      addEvent(message, 'error');
+    });
+
+    EventsOn("server-error", (message) => {
+      addEvent(message, 'error');
+    });
+
+    return () => {
+      EventsOff("reception-started", "reception-finished", "client-error", "server-error");
+    };
+  }, []); // El array vacío asegura que esto se configure solo una vez
+
+  // --- El resto de tus funciones se mantienen igual ---
+
   const addPaths = (incoming: string[]) => {
     setFileInfo((prev) => ({
       ...prev,
@@ -44,6 +98,7 @@ function App() {
       ...prev,
       paths: [],
     }));
+
   const abrirFilePicker = async () => {
     try {
       const paths = await SelectFile();
@@ -55,29 +110,16 @@ function App() {
     }
   };
 
-  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const list = e.target.files
-      ? Array.from(e.target.files).map((f) => (f as any).path || f.name)
-      : [];
-    addPaths(list);
-    // opcional: limpiar el input para poder volver a elegir lo mismo después
-    e.target.value = "";
-  };
-
   const enviar = async () => {
     if (!fileInfo.address.trim() || fileInfo.paths.length === 0) return;
     try {
-      // Llama a tu backend Go que hace streaming por rutas
       await SendFileHandler(fileInfo);
-      // feedback al usuario…
-      // toast ok, limpiar paths, etc.
       limpiarPaths();
     } catch (err) {
       console.error(err);
-      // toast de error
     }
   };
-
+  
   const handleMode = async () => {
     if (!recibir) {
       setRecibir(true);
@@ -107,10 +149,19 @@ function App() {
       data-theme="synthwave"
       className="flex flex-col min-h-screen bg-base-200"
     >
+      {/* Paso 4: Renderizar la cola de eventos usando el componente toast */}
+      <div className="toast toast-top toast-end z-50">
+        {events.map((event) => (
+          <div key={event.id} className={`alert alert-${event.type}`}>
+            <span>{event.text}</span>
+          </div>
+        ))}
+      </div>
+
       <div className="container mx-auto flex-col justify-center items-center flex-1 flex gap-4">
         <h1 className="text-primary">Transfiera o reciba su archivo</h1>
-
-        {/* Selector de modo */}
+        
+        {/* El resto de tu JSX se mantiene igual */}
         <div className="flex flex-col items-center gap-4">
           <div className="flex flex-row items-center justify-center gap-4">
             <span className="badge badge-lg bg-secondary-content text-secondary">
@@ -136,12 +187,11 @@ function App() {
 
         {recibir ? (
           <div className="flex items-center gap-4">
-            <p className="label">Esperando archivo en puerto 8080</p>
+            <p className="label">Esperando archivos en puerto 8080</p>
             <span className="loading loading-spinner text-primary"></span>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            {/* TCP/UDP */}
             <div className="flex items-center gap-4">
               <span className="badge badge-lg bg-secondary-content text-secondary">
                 {fileInfo.tcp ? "TCP" : "UDP"}
@@ -168,8 +218,6 @@ function App() {
                 />
               </label>
             </div>
-            {/* Dirección */}
-
             <fieldset className="fieldset flex flex-col items-center justify-center text-center">
               <legend className="fieldset-legend text-secondary text-center">
                 Dirección destino
@@ -203,7 +251,6 @@ function App() {
               </p>
             </fieldset>
 
-            {/* Zona de DROP (visible) */}
             <button
               className="w-full max-w-xl border-2 border-dashed rounded-xl p-8 flex flex-col items-center text-center gap-2 transition bg-base-100"
               onClick={abrirFilePicker}
@@ -228,7 +275,6 @@ function App() {
               Limpiar
             </button>
 
-            {/* Lista seleccionada */}
             <ul className="w-full max-w-xl list-disc pl-6 text-center">
               {fileInfo.paths.map((p, i) => (
                 <li key={i} className="truncate">
@@ -237,7 +283,6 @@ function App() {
               ))}
             </ul>
 
-            {/* Acciones */}
             <div className="flex gap-2">
               <button
                 className="btn btn-primary text-primary-content"

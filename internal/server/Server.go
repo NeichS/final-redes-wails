@@ -8,11 +8,10 @@ import (
 	"sync"
 )
 
-// Server struct para gestionar el estado del servidor de forma segura
 type Server struct {
 	ctx         context.Context
 	listener    net.Listener
-	mu          sync.Mutex // Mutex para proteger el acceso concurrente
+	mu          sync.Mutex
 	isListening bool
 }
 
@@ -20,7 +19,6 @@ func (s *Server) StartContext(ctx context.Context) {
 	s.ctx = ctx
 }
 
-// ReceiveFileHandler inicia el servidor en una nueva goroutine para no bloquear la UI
 func (s *Server) ReceiveFileHandler() (string, error) {
 	s.mu.Lock()
 	if s.isListening {
@@ -41,13 +39,11 @@ func (s *Server) ReceiveFileHandler() (string, error) {
 
 	log.Println("Server listening on port 8080")
 
-	// Ejecutamos el bucle de aceptación en una goroutine para no bloquear la llamada
 	go s.acceptLoop()
 
 	return "Servidor iniciado en el puerto 8080", nil
 }
 
-// StopServerHandler detiene el servidor de forma segura
 func (s *Server) StopServerHandler() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -76,6 +72,6 @@ func (s *Server) acceptLoop() {
 			continue
 		}
 		// Maneja cada conexión en su propia goroutine
-		go handleConnection(conn)
+		go handleConnection(s.ctx, conn)
 	}
 }

@@ -3,15 +3,17 @@
 package server
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"io"
 	"log"
 	"net"
 	"os"
 )
 
-func handleConnection(conn net.Conn) {
+func handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 	log.Println("Accepted new connection, waiting for files...")
 
@@ -39,17 +41,21 @@ func handleConnection(conn net.Conn) {
 			fileName := string(buffer[9 : 9+nameLen])
 
 			log.Printf("Receiving file: %s, Segments: %d", fileName, reps)
-
+			runtime.EventsEmit(ctx, "reception-started", fileName)
 			conn.Write([]byte("Header received for " + fileName))
 
-			newFile, err := os.Create(fileName)
+			if err := os.MkdirAll("./receive", 0755); err != nil {
+				log.Printf("Error creating directory: %v", err)
+				continue
+			}
+
+			newFile, err := os.Create("./receive/" + fileName)
 			if err != nil {
 				log.Printf("Error creating file: %v", err)
 				continue
 			}
 
-			// Recibir los segmentos del archivo
-			for i := uint32(0); i < reps; i++ {
+			for i := range reps {
 				n, err = conn.Read(buffer)
 				if err != nil {
 					if err != io.EOF {
@@ -73,14 +79,14 @@ func handleConnection(conn net.Conn) {
 						return
 					}
 
-					conn.Write([]byte(fmt.Sprintf("Segment %d received", i)))
+					fmt.Fprintf(conn, "Segment %d received", i)
 				}
 			}
 
 			newFile.Close()
 			log.Printf("File %s received successfully.", fileName)
-			conn.Write([]byte(fmt.Sprintf("File %s received successfully", fileName)))
-
+			fmt.Fprintf(conn, "File %s received successfully", fileName)
+			runtime.EventsEmit(ctx, "reception-finished", fmt.Sprintf("¡%s recibido con éxito!", fileName))
 		} else {
 			log.Println("Invalid header received.")
 		}

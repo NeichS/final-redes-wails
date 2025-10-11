@@ -40,7 +40,7 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			app.StartContext(ctx)
 			client.StartContext(ctx)
-			// server.StartContext(ctx)
+			server.StartContext(ctx)
 		},
 		Bind: []interface{}{
 			app,

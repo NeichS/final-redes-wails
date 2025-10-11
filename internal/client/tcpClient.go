@@ -3,6 +3,7 @@
 package server
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -13,18 +14,20 @@ import (
 	"path/filepath" // <--- Importa el paquete path/filepath
 
 	"github.com/NeichS/final-redes-wails/internal/shared"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-func startTCPClient(addr, port string, filePaths []string) error {
+func startTCPClient(ctx context.Context, addr, port string, filePaths []string) error {
 	tcpServer, err := net.ResolveTCPAddr("tcp", addr+":"+port)
 	if err != nil {
 		log.Printf("Error resolving TCP address: %v", err)
+		runtime.EventsEmit(ctx, "client-error", "dirección IP inválida")
 		return err
 	}
 
 	conn, err := net.DialTCP("tcp", nil, tcpServer)
 	if err != nil {
-		log.Printf("Error dialing: %v", err) // Cambiado de log.Fatal
+		log.Printf("Error dialing: %v", err)
 		return err
 	}
 	defer conn.Close() // Asegura que la conexión se cierre al final
