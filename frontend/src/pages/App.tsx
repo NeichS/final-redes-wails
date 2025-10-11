@@ -5,6 +5,7 @@ import { OnFileDrop, OnFileDropOff } from "../../wailsjs/runtime/runtime.js";
 import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
 import { ReceiveFileHandler } from "../../wailsjs/go/server/Server.js";
 import { StopServerHandler } from "../../wailsjs/go/server/Server.js";
+import { SelectFile } from "../../wailsjs/go/app/App.js";
 interface FileInfo {
   address: string;
   port: string;
@@ -43,8 +44,16 @@ function App() {
       ...prev,
       paths: [],
     }));
-
-  const abrirFilePicker = () => fileInputRef.current?.click();
+  const abrirFilePicker = async () => {
+    try {
+      const paths = await SelectFile();
+      if (paths && paths.length > 0) {
+        addPaths(paths);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files
@@ -208,14 +217,6 @@ function App() {
                 width="48"
                 height="48"
                 className=""
-              />
-              {/* input oculto para file picker */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={onFileInputChange}
               />
             </button>
             <button

@@ -6,6 +6,10 @@ export function Greet(arg1) {
   return window['go']['app']['App']['Greet'](arg1);
 }
 
+export function SelectFile() {
+  return window['go']['app']['App']['SelectFile']();
+}
+
 export function StartContext(arg1) {
   return window['go']['app']['App']['StartContext'](arg1);
 }

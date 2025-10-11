@@ -1,3 +1,5 @@
+// internal/shared/utils.go
+
 package shared
 
 import (
@@ -6,35 +8,35 @@ import (
 )
 
 type MetaData struct {
-    name     string
-    fileSize uint32
-    reps     uint32
+	name     string
+	fileSize int64
+	reps     uint32
 }
 
-func NewMetadata(file *os.File) MetaData {
+// Modificamos NewMetadata para aceptar el nombre del archivo por separado
+func NewMetadata(file *os.File, baseName string) MetaData {
+	fileInfo, err := file.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fileInfo, err := file.Stat()
+	size := fileInfo.Size()
 
-    if err != nil {
-        log.Fatal(err)
-    }
+	header := MetaData{
+		name:     baseName,
+		fileSize: size,
+		reps:     uint32(size/1014) + 1,
+	}
 
-    size := fileInfo.Size()
-
-    header := MetaData{
-        name:     file.Name(),
-        fileSize: uint32(size),
-        reps:     uint32(size / 1014) + 1,
-    }
-
-    return header
+	return header
 }
+
 
 func (m *MetaData) Name() string {
 	return m.name
 }
 
-func (m *MetaData) FileSize() uint32 {
+func (m *MetaData) FileSize() int64 {
 	return m.fileSize
 }
 func (m *MetaData) Reps() uint32 {

@@ -4,4 +4,6 @@ import {context} from '../models';
 
 export function Greet(arg1:string):Promise<string>;
 
+export function SelectFile():Promise<Array<string>>;
+
 export function StartContext(arg1:context.Context):Promise<void>;
