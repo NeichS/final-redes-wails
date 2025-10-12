@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"path/filepath" // <--- Importa el paquete path/filepath
+	"time"
 
 	"github.com/NeichS/final-redes-wails/internal/shared"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -27,26 +28,34 @@ func startTCPClient(ctx context.Context, addr, port string, filePaths []string) 
 
 	conn, err := net.DialTCP("tcp", nil, tcpServer)
 	if err != nil {
+		runtime.EventsEmit(ctx, "client-error", fmt.Sprintf("No se pudo conectar: %v", err))
 		log.Printf("Error dialing: %v", err)
 		return err
 	}
-	defer conn.Close() // Asegura que la conexión se cierre al final
+	defer conn.Close()
 
-	// Llama a la función que ahora puede enviar múltiples archivos
-	err = sendFiles(filePaths, conn)
+	err = sendFiles(ctx, filePaths, conn)
 	if err != nil {
 		log.Printf("Error sending files: %v", err)
+		runtime.EventsEmit(ctx, "client-error", fmt.Sprintf("Error durante el envío: %v", err))
 		return err
 	}
 
-	log.Println("All files sent successfully.")
+	runtime.EventsEmit(ctx, "reception-finished", "¡Todos los archivos enviados con éxito!")
 	return nil
 }
 
 // Renombrada a sendFiles y ahora itera sobre los paths
-func sendFiles(filePaths []string, conn *net.TCPConn) error {
-	for _, path := range filePaths {
-		err := sendSingleFile(path, conn)
+func sendFiles(ctx context.Context, filePaths []string, conn *net.TCPConn) error {
+	totalFiles := len(filePaths)
+	for i, path := range filePaths {
+		runtime.EventsEmit(ctx, "sending-file-start", map[string]interface{}{
+			"fileName":    filepath.Base(path),
+			"currentFile": i + 1,
+			"totalFiles":  totalFiles,
+		})
+		time.Sleep(100 * time.Millisecond)
+		err := sendSingleFile(ctx, path, conn)
 		if err != nil {
 			// Si hay un error con un archivo, lo reportamos y paramos
 			return fmt.Errorf("failed to send file %s: %w", path, err)
@@ -55,9 +64,8 @@ func sendFiles(filePaths []string, conn *net.TCPConn) error {
 	return nil
 }
 
-// Nueva función que encapsula la lógica para un solo archivo
-func sendSingleFile(filePath string, conn *net.TCPConn) error {
-	file, err := os.Open(filePath) // Usar os.Open para lectura
+func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) error {
+	file, err := os.Open(filePath)
 	if err != nil {
 		log.Printf("Error opening file %s: %v", filePath, err)
 		return err
@@ -124,7 +132,11 @@ func sendSingleFile(filePath string, conn *net.TCPConn) error {
 			return err
 		}
 
-		// Esperar confirmación del segmento
+		runtime.EventsEmit(ctx, "sending-file-progress", map[string]interface{}{
+			"sent":  i + 1,
+			"total": header.Reps(),
+		})
+
 		_, err = conn.Read(received)
 		if err != nil {
 			if err == io.EOF {

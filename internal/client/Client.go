@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type Client struct {
@@ -30,7 +29,6 @@ func (c *Client) SendFileHandler(fi FileSenderInfo) (string, error) {
 
 		if err != nil {
 			log.Printf("Error starting TCP server: %v", err)
-			runtime.EventsEmit(c.ctx, "client-error", "conexión rechazada")
 			return "", err
 		}
 	}
