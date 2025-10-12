@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"; // <-- Importa useRef
+import { useState, useRef, useEffect } from "react";
 import type { FileInfo } from "../interfaces/FileInfo.js";
 import type { ProgressInfo } from "../interfaces/ProgressInfo.js";
 import type { EventMessage } from "../interfaces/EventMessage.js";
@@ -11,9 +11,11 @@ import {
   EventsOff,
 } from "../../wailsjs/runtime/runtime.js";
 import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
-import { ReceiveFileHandler, StopServerHandler } from "../../wailsjs/go/server/Server.js";
+import {
+  ReceiveFileHandler,
+  StopServerHandler,
+} from "../../wailsjs/go/server/Server.js";
 import { SelectFile } from "../../wailsjs/go/app/App.js";
-
 function App() {
   const [recibir, setRecibir] = useState(false);
   const [serverOn, setServerOn] = useState(false);
@@ -47,32 +49,39 @@ function App() {
     }
   }, [progress.visible]);
 
-
-  const addEvent = (text: string, type: EventMessage['type']) => {
+  const addEvent = (text: string, type: EventMessage["type"]) => {
     const newEvent: EventMessage = {
       id: Date.now() + Math.random(),
       text,
       type,
     };
-    setEvents(prevEvents => [...prevEvents, newEvent]);
+    setEvents((prevEvents) => [...prevEvents, newEvent]);
     setTimeout(() => {
-      setEvents(prevEvents => prevEvents.filter(e => e.id !== newEvent.id));
+      setEvents((prevEvents) => prevEvents.filter((e) => e.id !== newEvent.id));
     }, 5000);
   };
-  
+
   useEffect(() => {
-    EventsOn("reception-started", (fileName) => addEvent(`Recibiendo archivo: ${fileName}...`, 'info'));
+    EventsOn("reception-started", (fileName) =>
+      addEvent(`Recibiendo archivo: ${fileName}...`, "info")
+    );
     EventsOn("reception-finished", (message) => {
-        addEvent(message, 'success');
-        setTimeout(() => setProgress(prev => ({ ...prev, visible: false })), 2000);
+      addEvent(message, "success");
+      setTimeout(
+        () => setProgress((prev) => ({ ...prev, visible: false })),
+        2000
+      );
     });
     EventsOn("client-error", (message) => {
-        addEvent(message, 'error');
-        setTimeout(() => setProgress(prev => ({ ...prev, visible: false })), 2000);
-        setEnviando(false)
+      addEvent(message, "error");
+      setTimeout(
+        () => setProgress((prev) => ({ ...prev, visible: false })),
+        2000
+      );
+      setEnviando(false);
     });
-    EventsOn("server-error", (message) => addEvent(message, 'error'));
-    
+    EventsOn("server-error", (message) => addEvent(message, "error"));
+
     EventsOn("sending-file-start", (data) => {
       setProgress({
         visible: true,
@@ -84,26 +93,27 @@ function App() {
       });
     });
     EventsOn("sending-file-progress", (data) => {
-      setProgress((prev) => ({
-        ...prev,
-        sent: data.sent,
-        total: data.total,
-      }));
+      setProgress((prev) => ({ ...prev, sent: data.sent, total: data.total }));
     });
 
     return () => {
-      EventsOff("reception-started", "reception-finished", "client-error", "server-error", "sending-file-start", "sending-file-progress");
+      EventsOff(
+        "reception-started",
+        "reception-finished",
+        "client-error",
+        "server-error",
+        "sending-file-start",
+        "sending-file-progress"
+      );
     };
   }, []);
 
   const addPaths = (incoming: string[]) => {
-    setFileInfo((prev) => ({ ...prev, paths: Array.from(new Set([...prev.paths, ...incoming])) }));
+    setFileInfo((prev) => ({
+      ...prev,
+      paths: Array.from(new Set([...prev.paths, ...incoming])),
+    }));
   };
-
-  useEffect(() => {
-    OnFileDrop((_x, _y, paths) => addPaths(paths), true);
-    return () => OnFileDropOff();
-  }, []);
 
   const limpiarPaths = () => setFileInfo((prev) => ({ ...prev, paths: [] }));
 
@@ -117,14 +127,15 @@ function App() {
   };
 
   const enviar = async () => {
-    setEnviando(true);
     if (!fileInfo.address.trim() || fileInfo.paths.length === 0) return;
+    setEnviando(true);
     try {
       await SendFileHandler(fileInfo);
       limpiarPaths();
-      setEnviando(false);
     } catch (err) {
       console.error(err);
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -143,35 +154,45 @@ function App() {
     setServerOn(true);
     try {
       await ReceiveFileHandler();
-      setServerOn(false);
     } catch (err) {
       console.error(err);
+    } finally {
       setServerOn(false);
     }
   };
 
   return (
-    <div data-theme="synthwave" className="flex flex-col min-h-screen bg-base-200">
+    <div
+      data-theme="synthwave"
+      className="flex flex-col min-h-screen bg-base-200"
+    >
       <div className="toast toast-top toast-end z-50">
         {events.map((event) => (
-          <div key={event.id} className={`alert alert-${event.type}`}>
+          <div key={event.id} className={`alert alert-${event.type} shadow-lg`}>
             <span>{event.text}</span>
           </div>
         ))}
       </div>
 
-      <dialog id="progress_modal" className="modal modal-bottom sm:modal-middle" ref={modalRef}>
+      <dialog
+        id="progress_modal"
+        className="modal modal-bottom sm:modal-middle"
+        ref={modalRef}
+      >
         <div className="modal-box">
           <div className="w-full flex flex-col items-center gap-2">
-            <h3 className="font-bold text-lg text-primary">Enviando Archivos</h3>
+            <h3 className="font-bold text-lg text-primary">
+              Enviando Archivos
+            </h3>
             <span className="text-secondary text-sm">
-              Archivo {progress.currentFile} de {progress.totalFiles}: {progress.fileName}
+              Archivo {progress.currentFile} de {progress.totalFiles}:{" "}
+              {progress.fileName}
             </span>
-            <progress 
-              className="progress progress-primary w-full" 
-              value={progress.sent} 
-              max={progress.total}>
-            </progress>
+            <progress
+              className="progress progress-primary w-full"
+              value={progress.sent}
+              max={progress.total}
+            ></progress>
             <span className="font-mono">
               {Math.round((progress.sent / progress.total) * 100 || 0)}%
             </span>
@@ -179,64 +200,145 @@ function App() {
         </div>
       </dialog>
 
-      <div className="container mx-auto flex-col justify-center items-center flex-1 flex gap-4">
-        <h1 className="text-primary">Transfiera o reciba su archivo</h1>
-        
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex flex-row items-center justify-center gap-4">
-            <span className="badge badge-lg bg-secondary-content text-secondary">
-              {recibir ? "Receptor" : "Transmisor"}
-            </span>
-            <label className="swap swap-rotate bg-primary-content btn">
-              <input type="checkbox" checked={recibir} onChange={handleMode} />
-              <Icon className="swap-on text-primary" icon="ic:sharp-call-received" width="32" height="32" />
-              <Icon className="swap-off text-primary" icon="tabler:arrows-exchange" width="32" height="32" />
-            </label>
-          </div>
+      <div className="container mx-auto flex-col justify-center items-center flex-1 flex gap-4 p-4">
+        <h1 className="text-primary text-3xl font-bold">
+          Transfiere tus Archivos
+        </h1>
+
+        <div className="tabs tabs-boxed flex gap-4">
+          <a
+            className={`tab ${!recibir ? "tab-active" : ""} text-secondary bg-secondary-content rounded-2xl`}
+            onClick={() => recibir && handleMode()}
+          >
+            Transmitir
+          </a>
+          <a
+            className={`tab ${recibir ? "tab-active" : ""} bg-secondary-content text-secondary rounded-2xl`}
+            onClick={() => !recibir && handleMode()}
+          >
+            Recibir
+          </a>
         </div>
 
         {recibir ? (
-          <div className="flex items-center gap-4">
-            <p className="label">Esperando archivos en puerto 8080</p>
-            <span className="loading loading-spinner text-primary"></span>
+          <div className="flex flex-col items-center gap-4 p-8">
+            <p className="label text-xl">Esperando archivos en puerto 8080</p>
+            <span className="loading loading-spinner text-primary loading-lg"></span>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-4">
-              <span className="badge badge-lg bg-secondary-content text-secondary">
+          <div className="w-full max-w-xl flex flex-col items-center gap-4">
+            <div className="flex items-center gap-4 self-center">
+              <span className="badge badge-lg badge-ghost font-bold ">
                 {fileInfo.tcp ? "TCP" : "UDP"}
               </span>
-              <label className="swap swap-rotate bg-primary-content btn">
-                <input type="checkbox" checked={fileInfo.tcp} onChange={(e) => setFileInfo((prev) => ({ ...prev, tcp: e.target.checked }))} />
-                <Icon className="swap-off text-primary" icon="tabler:cube-send" width="32" height="32" />
-                <Icon className="swap-on text-primary" icon="material-symbols:handshake-outline" width="32" height="32" />
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={fileInfo.tcp}
+                onChange={(e) =>
+                  setFileInfo((prev) => ({ ...prev, tcp: e.target.checked }))
+                }
+              />
+            </div>
+
+            <fieldset className="form-control w-full flex flex-col">
+              <div className="self-center">
+                <label className="label">
+                <legend className="fieldset-legend text-secondary text-center">
+                  Dirección destino
+                </legend>
               </label>
-            </div>
-            <fieldset className="fieldset flex flex-col items-center justify-center text-center">
-              <legend className="fieldset-legend text-secondary text-center">Dirección destino</legend>
-              <div className="flex flex-row items-center justify-center">
-                <input type="text" className="input" placeholder="127.0.0.1" value={fileInfo.address} onChange={(e) => setFileInfo((prev) => ({ ...prev, address: e.target.value }))} />
-                <input type="number" className="input flex-1" placeholder="8080" maxLength={5} value={fileInfo.port} onChange={(e) => setFileInfo((prev) => ({ ...prev, port: e.target.value }))} />
               </div>
-              <p className="label">Ingrese la dirección del host a conectarse</p>
+              
+              <div className="join">
+                <input
+                  type="text"
+                  className="input input-bordered join-item w-full"
+                  placeholder="127.0.0.1"
+                  value={fileInfo.address}
+                  onChange={(e) =>
+                    setFileInfo((prev) => ({
+                      ...prev,
+                      address: e.target.value,
+                    }))
+                  }
+                />
+                <input
+                  type="number"
+                  className="input input-bordered join-item w-24"
+                  placeholder="8080"
+                  value={fileInfo.port}
+                  onChange={(e) =>
+                    setFileInfo((prev) => ({ ...prev, port: e.target.value }))
+                  }
+                />
+              </div>
             </fieldset>
-            <button className="w-full max-w-xl border-2 border-dashed rounded-xl p-8 flex flex-col items-center text-center gap-2 transition bg-base-100" onClick={abrirFilePicker} style={{ "--wails-drop-target": "drop" } as React.CSSProperties}>
-              <p className="text-base-content/70">Arrastre aqui o clickee para examinar</p>
-              <Icon icon="mdi:file-upload-outline" width="48" height="48" className="" />
-            </button>
-            <button type="button" className="btn btn-error" onClick={limpiarPaths}>
-              <Icon icon="mdi:file-remove-outline" width="20" height="20" /> Limpiar
-            </button>
-            <ul className="w-full max-w-xl list-disc pl-6 text-center">
-              {fileInfo.paths.map((p, i) => ( <li key={i} className="truncate">{p}</li> ))}
-            </ul>
-            <div className="flex gap-2">
-              {!enviando && (
-                <button className="btn btn-primary text-primary-content" onClick={enviar} disabled={!fileInfo.address.trim() || fileInfo.paths.length === 0}>
-                Enviar <Icon icon="material-symbols:send-outline" width="24" height="24" />
-              </button>
-              )}
+
+            {/* --- NUEVO PANEL DE SELECCIÓN DE ARCHIVOS --- */}
+            <div className="w-full card bg-base-100 shadow-md">
+              <div className="card-body p-4">
+                <h2 className="card-title text-base justify-center text-secondary">
+                  Archivos para Enviar
+                </h2>
+                {fileInfo.paths.length > 0 ? (
+                  <ul className="w-full list-disc pl-5 text-left max-h-32 overflow-y-auto my-2">
+                    {fileInfo.paths.map((p, i) => (
+                      <li key={i} className="truncate text-sm" title={p}>
+                        {p.split(/[\\/]/).pop()}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-base-content/70 italic my-4 text-center">
+                    Ningún archivo seleccionado
+                  </p>
+                )}
+
+                <div className="card-actions justify-center mt-2">
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={abrirFilePicker}
+                  >
+                    <Icon icon="mdi:file-plus-outline" width="20" height="20" />
+                    Añadir Archivos
+                  </button>
+                  <button
+                    className="btn btn-error btn-sm btn-outline"
+                    onClick={limpiarPaths}
+                    disabled={fileInfo.paths.length === 0}
+                  >
+                    <Icon
+                      icon="mdi:file-remove-outline"
+                      width="20"
+                      height="20"
+                    />
+                    Limpiar
+                  </button>
+                </div>
+              </div>
             </div>
+
+            <button
+              className="btn btn-primary btn-wide mt-4"
+              onClick={enviar}
+              disabled={
+                enviando ||
+                !fileInfo.address.trim() ||
+                fileInfo.paths.length === 0
+              }
+            >
+              {enviando ? (
+                <span className="loading loading-spinner"></span>
+              ) : (
+                <Icon
+                  icon="material-symbols:send-outline"
+                  width="24"
+                  height="24"
+                />
+              )}
+              {enviando ? "Enviando..." : "Enviar"}
+            </button>
           </div>
         )}
       </div>
