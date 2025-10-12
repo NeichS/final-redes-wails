@@ -25,20 +25,18 @@ func (s *Server) ReceiveFileHandler() (string, error) {
 		s.mu.Unlock()
 		return "", errors.New("los servidores ya están escuchando")
 	}
-	s.isListening = true // Marcar como escuchando
+	s.isListening = true
 	s.mu.Unlock()
 
-	// Iniciar listener TCP en una goroutine
 	tcpListener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		s.StopServerHandler()
 		return "", err
 	}
-	s.listener = tcpListener // Guardar para poder cerrarlo después
+	s.listener = tcpListener
 	log.Println("Servidor TCP escuchando en :8080")
 	go s.acceptLoop()
 
-	// Iniciar listener UDP en otra goroutine
 	go s.startUDPServer()
 
 	return "Servidores TCP y UDP iniciados en puerto 8080", nil
@@ -57,12 +55,10 @@ func (s *Server) StopServerHandler() {
 	}
 }
 
-// Bucle para aceptar conexiones
 func (s *Server) acceptLoop() {
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {
-			// Verificamos si el error es porque cerramos la conexión a propósito
 			s.mu.Lock()
 			if !s.isListening {
 				s.mu.Unlock()
@@ -73,7 +69,6 @@ func (s *Server) acceptLoop() {
 			log.Printf("Error al aceptar la conexión: %v", err)
 			continue
 		}
-		// Maneja cada conexión en su propia goroutine
 		go handleConnection(s.ctx, conn)
 	}
 }

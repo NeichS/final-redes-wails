@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect } from "react"; // <-- Importa useRef
+import type { FileInfo } from "../interfaces/FileInfo.js";
+import type { ProgressInfo } from "../interfaces/ProgressInfo.js";
+import type { EventMessage } from "../interfaces/EventMessage.js";
 import "../styles/App.css";
 import { Icon } from "@iconify/react";
 import {
@@ -10,28 +13,6 @@ import {
 import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
 import { ReceiveFileHandler, StopServerHandler } from "../../wailsjs/go/server/Server.js";
 import { SelectFile } from "../../wailsjs/go/app/App.js";
-
-interface FileInfo {
-  address: string;
-  port: string;
-  tcp: boolean;
-  paths: string[];
-}
-
-interface EventMessage {
-  id: number;
-  text: string;
-  type: 'success' | 'error' | 'info';
-}
-
-interface ProgressInfo {
-  visible: boolean;
-  fileName: string;
-  currentFile: number;
-  totalFiles: number;
-  sent: number;
-  total: number;
-}
 
 function App() {
   const [recibir, setRecibir] = useState(false);
@@ -53,17 +34,15 @@ function App() {
     total: 100,
   });
 
-  // --- PASO 1: Crear una referencia para el modal ---
   const modalRef = useRef<HTMLDialogElement>(null);
 
-  // --- PASO 2: Usar useEffect para mostrar/ocultar el modal ---
   useEffect(() => {
     const modal = modalRef.current;
     if (modal) {
       if (progress.visible) {
-        modal.showModal(); // Muestra el modal
+        modal.showModal();
       } else {
-        modal.close(); // Oculta el modal
+        modal.close();
       }
     }
   }, [progress.visible]);
@@ -85,18 +64,15 @@ function App() {
     EventsOn("reception-started", (fileName) => addEvent(`Recibiendo archivo: ${fileName}...`, 'info'));
     EventsOn("reception-finished", (message) => {
         addEvent(message, 'success');
-        // Oculta la barra de progreso al finalizar
         setTimeout(() => setProgress(prev => ({ ...prev, visible: false })), 2000);
     });
     EventsOn("client-error", (message) => {
         addEvent(message, 'error');
-        // Oculta la barra de progreso si hay error
         setTimeout(() => setProgress(prev => ({ ...prev, visible: false })), 2000);
         setEnviando(false)
     });
     EventsOn("server-error", (message) => addEvent(message, 'error'));
     
-    // Listeners para el progreso
     EventsOn("sending-file-start", (data) => {
       setProgress({
         visible: true,
@@ -206,8 +182,6 @@ function App() {
       <div className="container mx-auto flex-col justify-center items-center flex-1 flex gap-4">
         <h1 className="text-primary">Transfiera o reciba su archivo</h1>
         
-        {/* El resto de tu JSX queda igual, ya no necesitamos la barra de progreso aquí */}
-
         <div className="flex flex-col items-center gap-4">
           <div className="flex flex-row items-center justify-center gap-4">
             <span className="badge badge-lg bg-secondary-content text-secondary">
@@ -262,7 +236,6 @@ function App() {
                 Enviar <Icon icon="material-symbols:send-outline" width="24" height="24" />
               </button>
               )}
-              
             </div>
           </div>
         )}

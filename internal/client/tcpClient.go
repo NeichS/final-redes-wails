@@ -110,31 +110,26 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 		return err
 	}
 
-	// Esperar confirmación del header del servidor
 	_, err = conn.Read(received)
 	if err != nil {
 		return err
 	}
 	fmt.Println(string(received))
 
-	// Enviar segmentos
 	for i := 0; i < int(header.Reps()); i++ {
 		n, err := file.Read(dataBuffer)
 		if err != nil && err != io.EOF {
 			return err
 		}
 
-		segmentBuffer := []byte{0} // Start of segment
+		segmentBuffer := []byte{0}
 
-		// Segment number
 		binary.BigEndian.PutUint32(temp, uint32(i))
 		segmentBuffer = append(segmentBuffer, temp...)
 
-		// Length of data
 		binary.BigEndian.PutUint32(temp, uint32(n))
 		segmentBuffer = append(segmentBuffer, temp...)
 
-		// Data
 		segmentBuffer = append(segmentBuffer, dataBuffer[:n]...)
 		segmentBuffer = append(segmentBuffer, 1) // End of segment
 

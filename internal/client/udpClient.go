@@ -26,7 +26,6 @@ func startUDPClient(ctx context.Context, addr, port string, filePaths []string) 
 		return err
 	}
 
-	// Usamos DialUDP, que es simple para enviar paquetes a un solo destino.
 	conn, err := net.DialUDP("udp", nil, serverAddr)
 	if err != nil {
 		runtime.EventsEmit(ctx, "client-error", fmt.Sprintf("No se pudo conectar (UDP): %v", err))
@@ -45,7 +44,6 @@ func startUDPClient(ctx context.Context, addr, port string, filePaths []string) 
 		err := sendSingleFileUDP(ctx, path, conn)
 		if err != nil {
 			runtime.EventsEmit(ctx, "client-error", fmt.Sprintf("Error enviando %s: %v", filepath.Base(path), err))
-			// Continuamos con el siguiente archivo en lugar de detenernos
 		}
 		// Una pequeña pausa entre archivos para que el servidor pueda procesarlos.
 		time.Sleep(250 * time.Millisecond)
@@ -55,7 +53,6 @@ func startUDPClient(ctx context.Context, addr, port string, filePaths []string) 
 	return nil
 }
 
-// sendSingleFileUDP envía todo el archivo sin esperar ACKs.
 func sendSingleFileUDP(ctx context.Context, filePath string, conn *net.UDPConn) error {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -63,7 +60,6 @@ func sendSingleFileUDP(ctx context.Context, filePath string, conn *net.UDPConn) 
 	}
 	defer file.Close()
 
-	// 1. Calcular Checksum y metadatos
 	hash := md5.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return err
@@ -75,16 +71,12 @@ func sendSingleFileUDP(ctx context.Context, filePath string, conn *net.UDPConn) 
 	fileInfo, _ := file.Stat()
 	totalSegments := uint32(fileInfo.Size()/udpPacketSize) + 1
 
-	// 2. Enviar paquete de INICIO (tipo 1)
-	// Protocolo: [Tipo(1)=1, TotalSegs(4), NameLen(4), ChecksumLen(4), Name(n), Checksum(n)]
 	startPacket := createStartPacket(totalSegments, baseName, checksum)
 	_, err = conn.Write(startPacket)
 	if err != nil {
 		return fmt.Errorf("falló el envío del paquete de inicio: %w", err)
 	}
 
-	// 3. Enviar todos los paquetes de DATOS (tipo 2) en ráfaga
-	// Protocolo: [Tipo(1)=2, SeqNum(4), Data(n)]
 	buffer := make([]byte, udpPacketSize)
 	for seqNum := uint32(1); seqNum <= totalSegments; seqNum++ {
 		n, err := file.Read(buffer)
@@ -102,7 +94,6 @@ func sendSingleFileUDP(ctx context.Context, filePath string, conn *net.UDPConn) 
 			// En este modo simple, ignoramos el error y continuamos
 		}
 
-		// Actualizamos la barra de progreso
 		runtime.EventsEmit(ctx, "sending-file-progress", map[string]interface{}{
 			"sent":  seqNum,
 			"total": totalSegments,
@@ -121,7 +112,6 @@ func sendSingleFileUDP(ctx context.Context, filePath string, conn *net.UDPConn) 
 	return nil
 }
 
-// Funciones auxiliares para crear paquetes (hacen el código más limpio)
 func createStartPacket(totalSegs uint32, name, checksum string) []byte {
 	packet := []byte{1}
 	temp := make([]byte, 4)

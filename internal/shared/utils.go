@@ -1,5 +1,3 @@
-// internal/shared/utils.go
-
 package shared
 
 import (
@@ -14,7 +12,6 @@ type MetaData struct {
 	Checksum string
 }
 
-// Modificamos NewMetadata para aceptar el nombre del archivo por separado
 func NewMetadata(file *os.File, baseName, checksum string) MetaData {
 	fileInfo, err := file.Stat()
 	if err != nil {

@@ -76,17 +76,16 @@ func (s *Server) startUDPServer() {
 				receivedData: make(map[uint32][]byte),
 			}
 
-		case 2:
+		case 2: // data
 			seqNum := binary.BigEndian.Uint32(packetData[1:5])
 			for _, transfer := range activeTransfers {
-				// Guardamos el payload del paquete (sin el tipo ni el seqNum)
 				dataCopy := make([]byte, len(packetData[5:]))
 				copy(dataCopy, packetData[5:])
 				transfer.receivedData[seqNum] = dataCopy
-				break // Asumimos el primer (y único) transfer
+				break
 			}
 
-		case 3:
+		case 3: // fin
 			for fileName, transfer := range activeTransfers {
 				log.Printf("UDP: Finalizando recepción de '%s'", fileName)
 				runtime.EventsEmit(s.ctx, "reception-finished", fileName)
@@ -96,18 +95,15 @@ func (s *Server) startUDPServer() {
 				}
 				sort.Ints(keys)
 
-				// Escribir los datos ordenados en el archivo
 				for _, k := range keys {
 					transfer.fileHandle.Write(transfer.receivedData[uint32(k)])
 				}
 				transfer.fileHandle.Close()
 
-				// Verificar Checksum
 				verifyUDPChecksum(s.ctx, fileName, transfer.checksum)
 
-				// Limpiar la transferencia completada
 				delete(activeTransfers, fileName)
-				break // Salimos del bucle
+				break
 			}
 		}
 	}
