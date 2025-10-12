@@ -10,11 +10,18 @@ import (
 	"log"
 	"net"
 	"os"
+	"sort"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// startUDPServer es el bucle principal del servidor UDP
+type udpTransfer struct {
+	fileHandle   *os.File
+	checksum     string
+	totalSegs    uint32
+	receivedData map[uint32][]byte
+}
+
 func (s *Server) startUDPServer() {
 	addr, err := net.ResolveUDPAddr("udp", ":8080")
 	if err != nil {
@@ -27,91 +34,83 @@ func (s *Server) startUDPServer() {
 		return
 	}
 	defer conn.Close()
-	log.Println("Servidor UDP escuchando en :8080")
+	log.Println("Servidor UDP (simple) escuchando en :8080")
 
-	var currentFile *os.File
-	var expectedSeqNum uint32
-	var totalSegments uint32
-	var receivedChecksum string
-	var fileName string
-
+	// Mantenemos un mapa de las transferencias activas, identificadas por el nombre del archivo
+	activeTransfers := make(map[string]*udpTransfer)
 	buffer := make([]byte, 2048)
 
 	for {
-		s.mu.Lock()
-		if !s.isListening {
-			s.mu.Unlock()
-			log.Println("Servidor UDP detenido.")
-			return
-		}
-		s.mu.Unlock()
-		
-		n, clientAddr, err := conn.ReadFromUDP(buffer)
+		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			continue
 		}
 
 		packetType := buffer[0]
+		packetData := buffer[:n]
 
 		switch packetType {
-		case 1:
-			totalSegments = binary.BigEndian.Uint32(buffer[1:5])
-			nameLen := binary.BigEndian.Uint32(buffer[5:9])
-			checksumLen := binary.BigEndian.Uint32(buffer[9:13])
-			
+		case 1: // Paquete de INICIO
+			totalSegments := binary.BigEndian.Uint32(packetData[1:5])
+			nameLen := binary.BigEndian.Uint32(packetData[5:9])
+			checksumLen := binary.BigEndian.Uint32(packetData[9:13])
+
 			endOfNames := 13 + nameLen
-			fileName = string(buffer[13:endOfNames])
-			receivedChecksum = string(buffer[endOfNames : endOfNames+checksumLen])
-			
-			log.Printf("UDP: Recibiendo '%s', %d segmentos, checksum %s", fileName, totalSegments, receivedChecksum)
+			fileName := string(packetData[13:endOfNames])
+			receivedChecksum := string(packetData[endOfNames : endOfNames+checksumLen])
+
+			log.Printf("UDP: Iniciando recepción de '%s'", fileName)
 			runtime.EventsEmit(s.ctx, "reception-started", fileName)
-			
+
 			os.MkdirAll("./receive", 0755)
-			currentFile, err = os.Create("./receive/" + fileName)
+			file, err := os.Create("./receive/" + fileName)
 			if err != nil {
 				log.Printf("UDP Error al crear archivo: %v", err)
 				continue
 			}
-			
-			expectedSeqNum = 1
-			sendAck(conn, clientAddr, 0) // ACK para el paquete de inicio
 
-		case 2: // Paquete de DATOS
-			if currentFile == nil { continue }
-			
-			seqNum := binary.BigEndian.Uint32(buffer[1:5])
-			if seqNum == expectedSeqNum {
-				_, err := currentFile.Write(buffer[5:n])
-				if err != nil {
-					log.Printf("UDP Error al escribir en archivo: %v", err)
-					continue
-				}
-				expectedSeqNum++
+			activeTransfers[fileName] = &udpTransfer{
+				fileHandle:   file,
+				checksum:     receivedChecksum,
+				totalSegs:    totalSegments,
+				receivedData: make(map[uint32][]byte),
 			}
-			sendAck(conn, clientAddr, seqNum) // Enviar ACK aunque sea un duplicado
-		
-		case 3: // Paquete de FIN
-			if currentFile == nil { continue }
-			
-			sendAck(conn, clientAddr, totalSegments+1)
-			currentFile.Close()
-			log.Printf("UDP: Transferencia de '%s' finalizada.", fileName)
-			
-			// Verificar Checksum
-			verifyUDPChecksum(s.ctx, fileName, receivedChecksum)
-			
-			// Reiniciar estado para el próximo archivo
-			currentFile = nil
+
+		case 2:
+			seqNum := binary.BigEndian.Uint32(packetData[1:5])
+			for _, transfer := range activeTransfers {
+				// Guardamos el payload del paquete (sin el tipo ni el seqNum)
+				dataCopy := make([]byte, len(packetData[5:]))
+				copy(dataCopy, packetData[5:])
+				transfer.receivedData[seqNum] = dataCopy
+				break // Asumimos el primer (y único) transfer
+			}
+
+		case 3:
+			for fileName, transfer := range activeTransfers {
+				log.Printf("UDP: Finalizando recepción de '%s'", fileName)
+				runtime.EventsEmit(s.ctx, "reception-finished", fileName)
+				keys := make([]int, 0, len(transfer.receivedData))
+				for k := range transfer.receivedData {
+					keys = append(keys, int(k))
+				}
+				sort.Ints(keys)
+
+				// Escribir los datos ordenados en el archivo
+				for _, k := range keys {
+					transfer.fileHandle.Write(transfer.receivedData[uint32(k)])
+				}
+				transfer.fileHandle.Close()
+
+				// Verificar Checksum
+				verifyUDPChecksum(s.ctx, fileName, transfer.checksum)
+
+				// Limpiar la transferencia completada
+				delete(activeTransfers, fileName)
+				break // Salimos del bucle
+			}
 		}
 	}
-}
-
-func sendAck(conn *net.UDPConn, addr *net.UDPAddr, ackNum uint32) {
-	ackPacket := []byte("ACK")
-	temp := make([]byte, 4)
-	binary.BigEndian.PutUint32(temp, ackNum)
-	ackPacket = append(ackPacket, temp...)
-	conn.WriteToUDP(ackPacket, addr)
 }
 
 func verifyUDPChecksum(ctx context.Context, fileName, receivedChecksum string) {
