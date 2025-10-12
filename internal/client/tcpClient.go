@@ -4,14 +4,16 @@ package server
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
-	"path/filepath" // <--- Importa el paquete path/filepath
+	"path/filepath"
 	"time"
 
 	"github.com/NeichS/final-redes-wails/internal/shared"
@@ -72,8 +74,16 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 	}
 	defer file.Close()
 
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		log.Printf("Error calculating checksum: %v", err)
+		return err
+	}
+	checksum := hex.EncodeToString(hash.Sum(nil))
+	file.Seek(0, 0)
+
 	baseName := filepath.Base(filePath)
-	header := shared.NewMetadata(file, baseName)
+	header := shared.NewMetadata(file, baseName, checksum)
 
 	dataBuffer := make([]byte, 1014)
 
@@ -82,17 +92,18 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 	temp := make([]byte, 4)
 	received := make([]byte, 1024)
 
-	// Header: Número de segmentos
 	binary.BigEndian.PutUint32(temp, header.Reps())
 	headerBuffer = append(headerBuffer, temp...)
 
-	// Header: Longitud del nombre
 	binary.BigEndian.PutUint32(temp, uint32(len(header.Name())))
 	headerBuffer = append(headerBuffer, temp...)
 
-	// Header: Nombre
+	binary.BigEndian.PutUint32(temp, uint32(len(header.GetChecksum())))
+	headerBuffer = append(headerBuffer, temp...)
+
 	headerBuffer = append(headerBuffer, []byte(header.Name())...)
-	headerBuffer = append(headerBuffer, 0) // End of header
+	headerBuffer = append(headerBuffer, []byte(header.GetChecksum())...)
+	headerBuffer = append(headerBuffer, 0)
 
 	_, err = conn.Write(headerBuffer)
 	if err != nil {

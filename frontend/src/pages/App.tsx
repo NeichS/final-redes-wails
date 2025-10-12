@@ -184,12 +184,11 @@ function App() {
         ))}
       </div>
 
-      {/* --- PASO 3: Añadir el JSX del Modal --- */}
       <dialog id="progress_modal" className="modal modal-bottom sm:modal-middle" ref={modalRef}>
         <div className="modal-box">
           <div className="w-full flex flex-col items-center gap-2">
             <h3 className="font-bold text-lg text-primary">Enviando Archivos</h3>
-            <span className="text-accent text-sm">
+            <span className="text-secondary text-sm">
               Archivo {progress.currentFile} de {progress.totalFiles}: {progress.fileName}
             </span>
             <progress 

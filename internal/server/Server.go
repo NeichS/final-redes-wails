@@ -23,35 +23,37 @@ func (s *Server) ReceiveFileHandler() (string, error) {
 	s.mu.Lock()
 	if s.isListening {
 		s.mu.Unlock()
-		return "", errors.New("el servidor ya está escuchando")
+		return "", errors.New("los servidores ya están escuchando")
 	}
-	
-    listener, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		s.mu.Unlock()
-		log.Printf("Error listening on port 8080: %v", err)
-		return "", err
-	}
-	
-    s.listener = listener
-	s.isListening = true
+	s.isListening = true // Marcar como escuchando
 	s.mu.Unlock()
 
-	log.Println("Server listening on port 8080")
-
+	// Iniciar listener TCP en una goroutine
+	tcpListener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		s.StopServerHandler()
+		return "", err
+	}
+	s.listener = tcpListener // Guardar para poder cerrarlo después
+	log.Println("Servidor TCP escuchando en :8080")
 	go s.acceptLoop()
 
-	return "Servidor iniciado en el puerto 8080", nil
+	// Iniciar listener UDP en otra goroutine
+	go s.startUDPServer()
+
+	return "Servidores TCP y UDP iniciados en puerto 8080", nil
 }
 
 func (s *Server) StopServerHandler() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.isListening && s.listener != nil {
-		log.Println("Deteniendo el servidor...")
+	if s.isListening {
+		log.Println("Deteniendo servidores...")
 		s.isListening = false
-		s.listener.Close() // Esto hará que Accept() devuelva un error
+		if s.listener != nil {
+			s.listener.Close()
+		}
 	}
 }
 

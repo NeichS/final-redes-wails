@@ -2,13 +2,16 @@ package server
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"io"
 	"log"
 	"net"
 	"os"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func handleConnection(ctx context.Context, conn net.Conn) {
@@ -33,7 +36,7 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 			return
 		}
 
-		headerFields := make([]byte, 8) // 4 bytes para reps + 4 para nameLen
+		headerFields := make([]byte, 12) // 4 bytes para reps + 4 para nameLen
 		_, err = io.ReadFull(conn, headerFields)
 		if err != nil {
 			log.Printf("Error reading header fields: %v", err)
@@ -41,19 +44,21 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 		}
 		reps := binary.BigEndian.Uint32(headerFields[0:4])
 		nameLen := binary.BigEndian.Uint32(headerFields[4:8])
+		checksumLen := binary.BigEndian.Uint32(headerFields[8:12])
 
-		nameAndEndByte := make([]byte, nameLen+1)
-		_, err = io.ReadFull(conn, nameAndEndByte)
+		payloadAndEndByte := make([]byte, nameLen+checksumLen+1)
+		_, err = io.ReadFull(conn, payloadAndEndByte)
 		if err != nil {
-			log.Printf("Error reading file name: %v", err)
+			log.Printf("Error reading header payload: %v", err)
 			return
 		}
 
-		if nameAndEndByte[nameLen] != 0 {
+		if payloadAndEndByte[nameLen+checksumLen] != 0 {
 			log.Println("Invalid header: missing end byte.")
 			continue
 		}
-		fileName := string(nameAndEndByte[:nameLen])
+		fileName := string(payloadAndEndByte[:nameLen])
+		receivedChecksum := string(payloadAndEndByte[nameLen : nameLen+checksumLen])
 
 		log.Printf("Receiving file: %s, Segments: %d", fileName, reps)
 		runtime.EventsEmit(ctx, "reception-started", fileName)
@@ -69,7 +74,7 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 			log.Printf("Error creating file: %v", err)
 			continue
 		}
-		
+
 		for i := uint32(0); i < reps; i++ {
 			segmentHeader := make([]byte, 9)
 			_, err := io.ReadFull(conn, segmentHeader)
@@ -100,7 +105,7 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 				newFile.Close()
 				return
 			}
-			
+
 			// Escribir en el archivo
 			_, err = newFile.Write(dataBuffer[:dataLen])
 			if err != nil {
@@ -114,7 +119,27 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 
 		newFile.Close()
 		log.Printf("File %s received successfully.", fileName)
-		runtime.EventsEmit(ctx, "reception-finished", fmt.Sprintf("¡%s recibido con éxito!", fileName))
-		// La confirmación final es opcional, ya que el cliente pasará al siguiente archivo
+
+		fileToVerify, err := os.Open("./receive/" + fileName)
+		if err != nil {
+			log.Printf("Could not open received file for verification: %v", err)
+			continue
+		}
+		defer fileToVerify.Close()
+
+		hash := md5.New()
+		if _, err := io.Copy(hash, fileToVerify); err != nil {
+			log.Printf("Error calculating checksum for received file: %v", err)
+			continue
+		}
+		calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
+
+		if receivedChecksum == calculatedChecksum {
+			log.Println("Checksums match! File is intact.")
+			runtime.EventsEmit(ctx, "reception-finished", fmt.Sprintf("✅ ¡%s recibido y verificado con éxito!", fileName))
+		} else {
+			log.Println("CHECKSUM MISMATCH! File is corrupted.")
+			runtime.EventsEmit(ctx, "server-error", fmt.Sprintf("❌ Error de checksum en %s. El archivo está corrupto.", fileName))
+		}
 	}
 }

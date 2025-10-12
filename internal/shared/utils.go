@@ -11,10 +11,11 @@ type MetaData struct {
 	name     string
 	fileSize int64
 	reps     uint32
+	Checksum string
 }
 
 // Modificamos NewMetadata para aceptar el nombre del archivo por separado
-func NewMetadata(file *os.File, baseName string) MetaData {
+func NewMetadata(file *os.File, baseName, checksum string) MetaData {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		log.Fatal(err)
@@ -26,6 +27,7 @@ func NewMetadata(file *os.File, baseName string) MetaData {
 		name:     baseName,
 		fileSize: size,
 		reps:     uint32(size/1014) + 1,
+		Checksum: checksum,
 	}
 
 	return header
@@ -41,4 +43,8 @@ func (m *MetaData) FileSize() int64 {
 }
 func (m *MetaData) Reps() uint32 {
 	return m.reps
+}
+
+func (m *MetaData) GetChecksum() string {
+	return m.Checksum
 }
