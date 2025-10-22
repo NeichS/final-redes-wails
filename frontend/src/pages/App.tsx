@@ -5,8 +5,6 @@ import type { EventMessage } from "../interfaces/EventMessage.js";
 import "../styles/App.css";
 import { Icon } from "@iconify/react";
 import {
-  OnFileDrop,
-  OnFileDropOff,
   EventsOn,
   EventsOff,
 } from "../../wailsjs/runtime/runtime.js";
@@ -207,13 +205,17 @@ function App() {
 
         <div className="tabs tabs-boxed flex gap-4">
           <a
-            className={`tab ${!recibir ? "tab-active" : ""} text-secondary bg-secondary-content rounded-2xl`}
+            className={`tab ${
+              !recibir ? "tab-active" : ""
+            } text-secondary bg-secondary-content rounded-2xl`}
             onClick={() => recibir && handleMode()}
           >
             Transmitir
           </a>
           <a
-            className={`tab ${recibir ? "tab-active" : ""} bg-secondary-content text-secondary rounded-2xl`}
+            className={`tab ${
+              recibir ? "tab-active" : ""
+            } bg-secondary-content text-secondary rounded-2xl`}
             onClick={() => !recibir && handleMode()}
           >
             Recibir
@@ -227,29 +229,44 @@ function App() {
           </div>
         ) : (
           <div className="w-full max-w-xl flex flex-col items-center gap-4">
-            <div className="flex items-center gap-4 self-center">
-              <span className="badge badge-lg badge-ghost font-bold ">
-                {fileInfo.tcp ? "TCP" : "UDP"}
-              </span>
-              <input
-                type="checkbox"
-                className="toggle toggle-primary"
-                checked={fileInfo.tcp}
-                onChange={(e) =>
-                  setFileInfo((prev) => ({ ...prev, tcp: e.target.checked }))
-                }
-              />
+            <div className="self-center">
+              <label
+                className={`swap swap-rotate btn btn-ghost px-4 ${
+                  enviando ? "btn-disabled" : ""
+                }`}
+                title="Cambiar protocolo (TCP/UDP)"
+              >
+                {/* El checkbox controla el estado de la animación y el valor TCP/UDP */}
+                <input
+                  type="checkbox"
+                  checked={fileInfo.tcp}
+                  onChange={(e) =>
+                    setFileInfo((prev) => ({ ...prev, tcp: e.target.checked }))
+                  }
+                  disabled={enviando}
+                />
+
+                <div className="swap-on flex items-center gap-2">
+                  <Icon className="text-primary" icon="mdi:lan" width="22" height="22" />
+                  <span className="text-primary font-mono font-bold">TCP</span>
+                </div>
+
+                <div className="swap-off flex items-center gap-2">
+                  <Icon className="text-accent" icon="mdi:lan-connect" width="22" height="22" />
+                  <span className="text-accent font-mono font-bold">UDP</span>
+                </div>
+              </label>
             </div>
 
             <fieldset className="form-control w-full flex flex-col">
               <div className="self-center">
                 <label className="label">
-                <legend className="fieldset-legend text-secondary text-center">
-                  Dirección destino
-                </legend>
-              </label>
+                  <legend className="fieldset-legend text-secondary text-center">
+                    Dirección destino
+                  </legend>
+                </label>
               </div>
-              
+
               <div className="join">
                 <input
                   type="text"
