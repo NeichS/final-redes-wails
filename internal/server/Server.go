@@ -10,7 +10,8 @@ import (
 
 type Server struct {
 	ctx         context.Context
-	listener    net.Listener
+	tcpListener net.Listener
+	udpConn     *net.UDPConn
 	mu          sync.Mutex
 	isListening bool
 }
@@ -33,7 +34,7 @@ func (s *Server) ReceiveFileHandler() (string, error) {
 		s.StopServerHandler()
 		return "", err
 	}
-	s.listener = tcpListener
+	s.tcpListener = tcpListener
 	log.Println("Servidor TCP escuchando en :8080")
 	go s.acceptLoop()
 
@@ -49,15 +50,19 @@ func (s *Server) StopServerHandler() {
 	if s.isListening {
 		log.Println("Deteniendo servidores...")
 		s.isListening = false
-		if s.listener != nil {
-			s.listener.Close()
+		if s.tcpListener != nil {
+			s.tcpListener.Close()
+		}
+		if s.udpConn != nil {
+			_ = s.udpConn.Close()
+			s.udpConn = nil
 		}
 	}
 }
 
 func (s *Server) acceptLoop() {
 	for {
-		conn, err := s.listener.Accept()
+		conn, err := s.tcpListener.Accept()
 		if err != nil {
 			s.mu.Lock()
 			if !s.isListening {

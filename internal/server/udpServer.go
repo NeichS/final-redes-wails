@@ -33,6 +33,8 @@ func (s *Server) startUDPServer() {
 		log.Printf("Error UDP (Listen): %v", err)
 		return
 	}
+
+	s.udpConn = conn
 	defer conn.Close()
 	log.Println("Servidor UDP (simple) escuchando en :8080")
 
