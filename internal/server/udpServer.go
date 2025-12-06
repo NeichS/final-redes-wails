@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -45,6 +46,20 @@ func (s *Server) startUDPServer() {
 	for {
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
+			// Si el error es por socket cerrado, salimos
+			if errors.Is(err, net.ErrClosed) {
+				log.Println("Servidor UDP detenido.")
+				return
+			}
+			// Para otros errores, logueamos y seguimos (o salimos si es crítico)
+			log.Printf("Error leyendo UDP: %v", err)
+			// Si el server ya no escucha, salimos
+			s.mu.Lock()
+			if !s.isListening {
+				s.mu.Unlock()
+				return
+			}
+			s.mu.Unlock()
 			continue
 		}
 

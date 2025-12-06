@@ -14,6 +14,8 @@ type Server struct {
 	udpConn     *net.UDPConn
 	mu          sync.Mutex
 	isListening bool
+	connsMu     sync.Mutex
+	activeConns map[net.Conn]struct{}
 }
 
 func (s *Server) StartContext(ctx context.Context) {
@@ -35,6 +37,7 @@ func (s *Server) ReceiveFileHandler() (string, error) {
 		return "", err
 	}
 	s.tcpListener = tcpListener
+	s.activeConns = make(map[net.Conn]struct{})
 	log.Println("Servidor TCP escuchando en :8080")
 	go s.acceptLoop()
 
@@ -53,6 +56,14 @@ func (s *Server) StopServerHandler() {
 		if s.tcpListener != nil {
 			s.tcpListener.Close()
 		}
+
+		s.connsMu.Lock()
+		for conn := range s.activeConns {
+			conn.Close()
+		}
+		s.activeConns = nil
+		s.connsMu.Unlock()
+
 		if s.udpConn != nil {
 			_ = s.udpConn.Close()
 			s.udpConn = nil
@@ -74,6 +85,6 @@ func (s *Server) acceptLoop() {
 			log.Printf("Error al aceptar la conexión: %v", err)
 			continue
 		}
-		go handleConnection(s.ctx, conn)
+		go s.handleConnection(conn)
 	}
 }

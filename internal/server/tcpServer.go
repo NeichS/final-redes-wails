@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -14,8 +13,18 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-func handleConnection(ctx context.Context, conn net.Conn) {
-	defer conn.Close()
+func (s *Server) handleConnection(conn net.Conn) {
+	s.connsMu.Lock()
+	s.activeConns[conn] = struct{}{}
+	s.connsMu.Unlock()
+
+	defer func() {
+		s.connsMu.Lock()
+		delete(s.activeConns, conn)
+		s.connsMu.Unlock()
+		conn.Close()
+	}()
+
 	log.Println("Accepted new connection, waiting for files...")
 
 	for {
@@ -32,7 +41,7 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 
 		if msgType[0] != 1 {
 			log.Printf("Invalid message type received. Expected header (1), got (%d)", msgType[0])
-			runtime.EventsEmit(ctx, "server-error", "Error de sincronización con el cliente.")
+			runtime.EventsEmit(s.ctx, "server-error", "Error de sincronización con el cliente.")
 			return
 		}
 
@@ -61,7 +70,7 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 		receivedChecksum := string(payloadAndEndByte[nameLen : nameLen+checksumLen])
 
 		log.Printf("Receiving file: %s, Segments: %d", fileName, reps)
-		runtime.EventsEmit(ctx, "reception-started", fileName)
+		runtime.EventsEmit(s.ctx, "reception-started", fileName)
 		conn.Write([]byte("Header received for " + fileName))
 
 		if err := os.MkdirAll("./receive", 0755); err != nil {
@@ -136,10 +145,10 @@ func handleConnection(ctx context.Context, conn net.Conn) {
 
 		if receivedChecksum == calculatedChecksum {
 			log.Println("Checksums match! File is intact.")
-			runtime.EventsEmit(ctx, "reception-finished", fmt.Sprintf("✅ ¡%s recibido y verificado con éxito!", fileName))
+			runtime.EventsEmit(s.ctx, "reception-finished", fmt.Sprintf("✅ ¡%s recibido y verificado con éxito!", fileName))
 		} else {
 			log.Println("CHECKSUM MISMATCH! File is corrupted.")
-			runtime.EventsEmit(ctx, "server-error", fmt.Sprintf("❌ Error de checksum en %s. El archivo está corrupto.", fileName))
+			runtime.EventsEmit(s.ctx, "server-error", fmt.Sprintf("❌ Error de checksum en %s. El archivo está corrupto.", fileName))
 		}
 	}
 }

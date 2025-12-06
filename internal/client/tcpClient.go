@@ -138,11 +138,6 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 			return err
 		}
 
-		runtime.EventsEmit(ctx, "sending-file-progress", map[string]interface{}{
-			"sent":  i + 1,
-			"total": header.Reps(),
-		})
-
 		_, err = conn.Read(received)
 		if err != nil {
 			if err == io.EOF {
@@ -151,6 +146,11 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 			return err
 		}
 		fmt.Println(string(received))
+
+		runtime.EventsEmit(ctx, "sending-file-progress", map[string]interface{}{
+			"sent":  i + 1,
+			"total": header.Reps(),
+		})
 	}
 	return nil
 }
