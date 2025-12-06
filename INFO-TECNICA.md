@@ -1,9 +1,3 @@
-Esta es una excelente oportunidad para "vender" tus decisiones. En ingeniería, **"lo elegí porque me siento cómodo"** se traduce técnicamente como **"se eligió para maximizar la productividad del desarrollo y reducir la deuda técnica aprovechando la experiencia previa del equipo"**.
-
-Aquí tienes una versión mejorada de la documentación. He redactado la sección de **Decisiones de Diseño** transformando tus motivos personales en justificaciones técnicas sólidas, ideales para una defensa académica.
-
----
-
 # Informe Técnico: Aplicación de Transferencia de Archivos P2P
 
 ## 1. Arquitectura y Diseño del Sistema
