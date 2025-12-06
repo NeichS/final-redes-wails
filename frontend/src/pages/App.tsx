@@ -8,7 +8,7 @@ import {
   EventsOn,
   EventsOff,
 } from "../../wailsjs/runtime/runtime.js";
-import { SendFileHandler } from "../../wailsjs/go/server/Client.js";
+import { SendFileHandler, ToggleDowntime } from "../../wailsjs/go/server/Client.js";
 import {
   ReceiveFileHandler,
   StopServerHandler,
@@ -113,6 +113,28 @@ function App() {
         "sending-file-progress",
         "receiving-file-progress"
       );
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "d") {
+        ToggleDowntime(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "d") {
+        ToggleDowntime(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
 

@@ -3,6 +3,10 @@
 import {server} from '../models';
 import {context} from '../models';
 
+export function IsDowntime():Promise<boolean>;
+
 export function SendFileHandler(arg1:server.FileSenderInfo):Promise<string>;
 
 export function StartContext(arg1:context.Context):Promise<void>;
+
+export function ToggleDowntime(arg1:boolean):Promise<void>;

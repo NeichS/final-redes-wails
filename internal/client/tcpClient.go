@@ -20,7 +20,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-func startTCPClient(ctx context.Context, addr, port string, filePaths []string) error {
+func startTCPClient(ctx context.Context, addr, port string, filePaths []string, client *Client) error {
 	tcpServer, err := net.ResolveTCPAddr("tcp", addr+":"+port)
 	if err != nil {
 		log.Printf("Error resolving TCP address: %v", err)
@@ -36,7 +36,7 @@ func startTCPClient(ctx context.Context, addr, port string, filePaths []string) 
 	}
 	defer conn.Close()
 
-	err = sendFiles(ctx, filePaths, conn)
+	err = sendFiles(ctx, filePaths, conn, client)
 	if err != nil {
 		log.Printf("Error sending files: %v", err)
 		runtime.EventsEmit(ctx, "client-error", fmt.Sprintf("Error durante el envío: %v", err))
@@ -48,7 +48,7 @@ func startTCPClient(ctx context.Context, addr, port string, filePaths []string) 
 }
 
 // Renombrada a sendFiles y ahora itera sobre los paths
-func sendFiles(ctx context.Context, filePaths []string, conn *net.TCPConn) error {
+func sendFiles(ctx context.Context, filePaths []string, conn *net.TCPConn, client *Client) error {
 	totalFiles := len(filePaths)
 	for i, path := range filePaths {
 		runtime.EventsEmit(ctx, "sending-file-start", map[string]interface{}{
@@ -57,7 +57,7 @@ func sendFiles(ctx context.Context, filePaths []string, conn *net.TCPConn) error
 			"totalFiles":  totalFiles,
 		})
 		time.Sleep(100 * time.Millisecond)
-		err := sendSingleFile(ctx, path, conn)
+		err := sendSingleFile(ctx, path, conn, client)
 		if err != nil {
 			// Si hay un error con un archivo, lo reportamos y paramos
 			return fmt.Errorf("failed to send file %s: %w", path, err)
@@ -66,7 +66,7 @@ func sendFiles(ctx context.Context, filePaths []string, conn *net.TCPConn) error
 	return nil
 }
 
-func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) error {
+func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn, client *Client) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Printf("Error opening file %s: %v", filePath, err)
@@ -117,6 +117,11 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 	fmt.Println(string(received))
 
 	for i := 0; i < int(header.Reps()); i++ {
+		// Check for downtime
+		for client.IsDowntime() {
+			time.Sleep(100 * time.Millisecond)
+		}
+
 		n, err := file.Read(dataBuffer)
 		if err != nil && err != io.EOF {
 			return err
