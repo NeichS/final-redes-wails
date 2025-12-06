@@ -85,6 +85,6 @@ func (s *Server) acceptLoop() {
 			log.Printf("Error al aceptar la conexión: %v", err)
 			continue
 		}
-		go s.handleConnection(conn)
+		go s.handleConnection(conn, s.ctx)
 	}
 }

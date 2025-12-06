@@ -94,6 +94,15 @@ function App() {
       setProgress((prev) => ({ ...prev, sent: data.sent, total: data.total }));
     });
 
+    EventsOn("receiving-file-progress", (data) => {
+      setProgress((prev) => ({
+        ...prev,
+        visible: true,
+        sent: data.received,
+        total: data.total,
+      }));
+    });
+
     return () => {
       EventsOff(
         "reception-started",
@@ -101,7 +110,8 @@ function App() {
         "client-error",
         "server-error",
         "sending-file-start",
-        "sending-file-progress"
+        "sending-file-progress",
+        "receiving-file-progress"
       );
     };
   }, []);
@@ -180,12 +190,23 @@ function App() {
         <div className="modal-box">
           <div className="w-full flex flex-col items-center gap-2">
             <h3 className="font-bold text-lg text-primary">
-              Enviando Archivos
+              {recibir ? "Recibiendo Archivos" : "Enviando Archivos"}
             </h3>
             <span className="text-secondary text-sm">
-              Archivo {progress.currentFile} de {progress.totalFiles}:{" "}
-              {progress.fileName}
+              {recibir
+                ? `Fragmentos recibidos: ${progress.sent} de ${progress.total}`
+                : `Archivo ${progress.currentFile} de ${progress.totalFiles}: ${progress.fileName}`}
             </span>
+            {progress.arqs !== undefined && (
+               <span className="text-warning text-xs font-bold">
+                 ARQs (Retransmisiones): {progress.arqs}
+               </span>
+            )}
+            {!recibir && (
+              <span className="text-secondary text-xs">
+                Fragmentos enviados: {progress.sent} de {progress.total}
+              </span>
+            )}
             <progress
               className="progress progress-primary w-full"
               value={progress.sent}

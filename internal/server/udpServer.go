@@ -99,6 +99,11 @@ func (s *Server) startUDPServer() {
 				dataCopy := make([]byte, len(packetData[5:]))
 				copy(dataCopy, packetData[5:])
 				transfer.receivedData[seqNum] = dataCopy
+
+				runtime.EventsEmit(s.ctx, "receiving-file-progress", map[string]interface{}{
+					"received": len(transfer.receivedData),
+					"total":    transfer.totalSegs,
+				})
 				break
 			}
 

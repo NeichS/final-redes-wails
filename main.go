@@ -8,6 +8,7 @@ import (
 	client "github.com/NeichS/final-redes-wails/internal/client"
 	sv "github.com/NeichS/final-redes-wails/internal/server"
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
@@ -35,6 +36,8 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
+		Logger:   logger.NewDefaultLogger(),
+		LogLevel: logger.INFO,
 
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup: func(ctx context.Context) {

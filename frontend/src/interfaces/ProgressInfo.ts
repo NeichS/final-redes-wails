@@ -5,4 +5,5 @@ export interface ProgressInfo {
   totalFiles: number;
   sent: number;
   total: number;
+  arqs?: number;
 }

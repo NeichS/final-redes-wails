@@ -133,19 +133,32 @@ func sendSingleFile(ctx context.Context, filePath string, conn *net.TCPConn) err
 		segmentBuffer = append(segmentBuffer, dataBuffer[:n]...)
 		segmentBuffer = append(segmentBuffer, 1) // End of segment
 
-		_, err = conn.Write(segmentBuffer)
-		if err != nil {
-			return err
-		}
-
-		_, err = conn.Read(received)
-		if err != nil {
-			if err == io.EOF {
-				return errors.New("connection closed by server prematurely")
+		// Retry loop for Stop-and-Wait ARQ
+		for {
+			_, err = conn.Write(segmentBuffer)
+			if err != nil {
+				return err
 			}
-			return err
+
+			// Set read deadline for ACK (e.g., 2 seconds)
+			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			_, err = conn.Read(received)
+			if err != nil {
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+					log.Printf("Timeout waiting for ACK %d. Resending...", i)
+					continue // Retry sending
+				}
+				if err == io.EOF {
+					return errors.New("connection closed by server prematurely")
+				}
+				return err
+			}
+			// Clear deadline after successful read
+			conn.SetReadDeadline(time.Time{})
+
+			fmt.Println(string(received))
+			break // ACK received, move to next segment
 		}
-		fmt.Println(string(received))
 
 		runtime.EventsEmit(ctx, "sending-file-progress", map[string]interface{}{
 			"sent":  i + 1,

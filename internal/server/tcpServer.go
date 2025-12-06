@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -13,7 +14,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-func (s *Server) handleConnection(conn net.Conn) {
+func (s *Server) handleConnection(conn net.Conn, ctx context.Context) {
 	s.connsMu.Lock()
 	s.activeConns[conn] = struct{}{}
 	s.connsMu.Unlock()
@@ -25,22 +26,22 @@ func (s *Server) handleConnection(conn net.Conn) {
 		conn.Close()
 	}()
 
-	log.Println("Accepted new connection, waiting for files...")
+	runtime.LogPrint(ctx, "Accepted new connection, waiting for files...")
 
 	for {
 		msgType := make([]byte, 1)
 		_, err := io.ReadFull(conn, msgType)
 		if err != nil {
 			if err == io.EOF {
-				log.Println("Client closed connection cleanly.")
+				runtime.LogPrint(ctx, "Client closed connection cleanly.")
 			} else {
-				log.Printf("Error reading message type: %v", err)
+				runtime.LogPrintf(ctx, "Error reading message type: %v", err)
 			}
 			return
 		}
 
 		if msgType[0] != 1 {
-			log.Printf("Invalid message type received. Expected header (1), got (%d)", msgType[0])
+			runtime.LogPrintf(ctx, "Invalid message type received. Expected header (1), got (%d)", msgType[0])
 			runtime.EventsEmit(s.ctx, "server-error", "Error de sincronización con el cliente.")
 			return
 		}
@@ -48,7 +49,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		headerFields := make([]byte, 12) // 4 bytes para reps + 4 para nameLen
 		_, err = io.ReadFull(conn, headerFields)
 		if err != nil {
-			log.Printf("Error reading header fields: %v", err)
+			runtime.LogPrintf(ctx, "Error reading header fields: %v", err)
 			return
 		}
 		reps := binary.BigEndian.Uint32(headerFields[0:4])
@@ -58,31 +59,34 @@ func (s *Server) handleConnection(conn net.Conn) {
 		payloadAndEndByte := make([]byte, nameLen+checksumLen+1)
 		_, err = io.ReadFull(conn, payloadAndEndByte)
 		if err != nil {
-			log.Printf("Error reading header payload: %v", err)
+			runtime.LogPrintf(ctx, "Error reading header payload: %v", err)
 			return
 		}
 
 		if payloadAndEndByte[nameLen+checksumLen] != 0 {
-			log.Println("Invalid header: missing end byte.")
+			runtime.LogPrint(ctx, "Invalid header: missing end byte.")
 			continue
 		}
 		fileName := string(payloadAndEndByte[:nameLen])
 		receivedChecksum := string(payloadAndEndByte[nameLen : nameLen+checksumLen])
 
-		log.Printf("Receiving file: %s, Segments: %d", fileName, reps)
+		runtime.LogPrintf(ctx, "Receiving file: %s, Segments: %d", fileName, reps)
 		runtime.EventsEmit(s.ctx, "reception-started", fileName)
 		conn.Write([]byte("Header received for " + fileName))
 
 		if err := os.MkdirAll("./receive", 0755); err != nil {
-			log.Printf("Error creating directory: %v", err)
+			runtime.LogPrintf(ctx, "Error creating directory: %v", err)
 			continue
 		}
 
 		newFile, err := os.Create("./receive/" + fileName)
 		if err != nil {
-			log.Printf("Error creating file: %v", err)
+			runtime.LogPrintf(ctx, "Error creating file: %v", err)
 			continue
 		}
+
+		var expectedSeq uint32 = 0
+		var arqs uint32 = 0
 
 		for i := uint32(0); i < reps; i++ {
 			segmentHeader := make([]byte, 9)
@@ -99,6 +103,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 				return
 			}
 
+			receivedSeq := binary.BigEndian.Uint32(segmentHeader[1:5])
 			dataLen := binary.BigEndian.Uint32(segmentHeader[5:9])
 			dataBuffer := make([]byte, dataLen+1) // +1 para el byte final
 
@@ -115,6 +120,28 @@ func (s *Server) handleConnection(conn net.Conn) {
 				return
 			}
 
+			// Duplicate Detection
+			runtime.LogPrintf(ctx, "Received sequence: %d", receivedSeq)
+			runtime.LogPrintf(ctx,"Expected sequence: %d", expectedSeq)
+			if receivedSeq < expectedSeq {
+				runtime.LogPrintf(ctx, "Duplicate segment %d received (expected %d). Resending ACK.", receivedSeq, expectedSeq)
+				arqs++
+				fmt.Println("Resending ACK for segment, total aqrs = ", arqs)
+				// Resend ACK for the received sequence (which is likely what the client is stuck on)
+				fmt.Fprintf(conn, "Segment %d received", receivedSeq)
+
+				// Emit progress with ARQ update
+				runtime.EventsEmit(s.ctx, "receiving-file-progress", map[string]interface{}{
+					"received": expectedSeq, // Still at the same progress
+					"total":    reps,
+					"arqs":     arqs,
+				})
+
+				// Decrement i because we didn't process a new segment
+				i--
+				continue
+			}
+
 			// Escribir en el archivo
 			_, err = newFile.Write(dataBuffer[:dataLen])
 			if err != nil {
@@ -122,8 +149,17 @@ func (s *Server) handleConnection(conn net.Conn) {
 				newFile.Close()
 				return
 			}
+
+			expectedSeq++
+
 			// Enviar confirmación del segmento
 			fmt.Fprintf(conn, "Segment %d received", i)
+
+			runtime.EventsEmit(s.ctx, "receiving-file-progress", map[string]interface{}{
+				"received": i + 1,
+				"total":    reps,
+				"arqs":     arqs,
+			})
 		}
 
 		newFile.Close()
