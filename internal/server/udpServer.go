@@ -63,6 +63,11 @@ func (s *Server) startUDPServer() {
 			continue
 		}
 
+		if s.IsDowntime() {
+			// Simular pérdida de paquetes: no procesamos nada
+			continue
+		}
+
 		packetType := buffer[0]
 		packetData := buffer[:n]
 

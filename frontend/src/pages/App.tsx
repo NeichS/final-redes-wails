@@ -12,6 +12,7 @@ import { SendFileHandler, ToggleDowntime } from "../../wailsjs/go/server/Client.
 import {
   ReceiveFileHandler,
   StopServerHandler,
+  ToggleDowntime as ToggleServerDowntime,
 } from "../../wailsjs/go/server/Server.js";
 import { SelectFile } from "../../wailsjs/go/app/App.js";
 function App() {
@@ -119,13 +120,21 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "d") {
-        ToggleDowntime(true);
+        if (recibir) {
+          ToggleServerDowntime(true);
+        } else {
+          ToggleDowntime(true);
+        }
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === "d") {
-        ToggleDowntime(false);
+        if (recibir) {
+          ToggleServerDowntime(false);
+        } else {
+          ToggleDowntime(false);
+        }
       }
     };
 
@@ -136,7 +145,7 @@ function App() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, []);
+  }, [recibir]);
 
   const addPaths = (incoming: string[]) => {
     setFileInfo((prev) => ({

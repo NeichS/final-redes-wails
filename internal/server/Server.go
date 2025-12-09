@@ -16,6 +16,25 @@ type Server struct {
 	isListening bool
 	connsMu     sync.Mutex
 	activeConns map[net.Conn]struct{}
+	downtime    bool
+	downtimeMu  sync.RWMutex
+}
+
+func (s *Server) ToggleDowntime(active bool) {
+	s.downtimeMu.Lock()
+	defer s.downtimeMu.Unlock()
+	s.downtime = active
+	if active {
+		log.Println("Server Downtime started")
+	} else {
+		log.Println("Server Downtime ended")
+	}
+}
+
+func (s *Server) IsDowntime() bool {
+	s.downtimeMu.RLock()
+	defer s.downtimeMu.RUnlock()
+	return s.downtime
 }
 
 func (s *Server) StartContext(ctx context.Context) {

@@ -120,9 +120,19 @@ func (s *Server) handleConnection(conn net.Conn, ctx context.Context) {
 				return
 			}
 
+			// SIMULACIÓN DE PÉRDIDA DE PAQUETES (DOWNTIME)
+			if s.IsDowntime() {
+				// Leímos el paquete del socket (para vaciar el buffer), pero lo ignoramos.
+				// No enviamos ACK.
+				// Decrementamos i para volver a esperar este mismo segmento (retransmisión).
+				log.Printf("DOWNTIME: Dropping packet seq %d", receivedSeq)
+				i--
+				continue
+			}
+
 			// Duplicate Detection
 			runtime.LogPrintf(ctx, "Received sequence: %d", receivedSeq)
-			runtime.LogPrintf(ctx,"Expected sequence: %d", expectedSeq)
+			runtime.LogPrintf(ctx, "Expected sequence: %d", expectedSeq)
 			if receivedSeq < expectedSeq {
 				runtime.LogPrintf(ctx, "Duplicate segment %d received (expected %d). Resending ACK.", receivedSeq, expectedSeq)
 				arqs++
@@ -155,11 +165,13 @@ func (s *Server) handleConnection(conn net.Conn, ctx context.Context) {
 			// Enviar confirmación del segmento
 			fmt.Fprintf(conn, "Segment %d received", i)
 
-			runtime.EventsEmit(s.ctx, "receiving-file-progress", map[string]interface{}{
-				"received": i + 1,
-				"total":    reps,
-				"arqs":     arqs,
-			})
+			if (i+1)%100 == 0 || i+1 == reps {
+				runtime.EventsEmit(s.ctx, "receiving-file-progress", map[string]interface{}{
+					"received": i + 1,
+					"total":    reps,
+					"arqs":     arqs,
+				})
+			}
 		}
 
 		newFile.Close()
