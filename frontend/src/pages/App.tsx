@@ -14,7 +14,7 @@ import {
   StopServerHandler,
   ToggleDowntime as ToggleServerDowntime,
 } from "../../wailsjs/go/server/Server.js";
-import { SelectFile } from "../../wailsjs/go/app/App.js";
+import { SelectFile, GetLocalIP } from "../../wailsjs/go/app/App.js";
 function App() {
   const [recibir, setRecibir] = useState(false);
   const [serverOn, setServerOn] = useState(false);
@@ -34,6 +34,7 @@ function App() {
     sent: 0,
     total: 100,
   });
+  const [isDowntime, setIsDowntime] = useState(false);
 
   const modalRef = useRef<HTMLDialogElement>(null);
 
@@ -48,6 +49,12 @@ function App() {
     }
   }, [progress.visible]);
 
+  const [localIP, setLocalIP] = useState("");
+
+  useEffect(() => {
+    GetLocalIP().then(setLocalIP).catch(console.error);
+  }, []);
+
   const addEvent = (text: string, type: EventMessage["type"]) => {
     const newEvent: EventMessage = {
       id: Date.now() + Math.random(),
@@ -55,10 +62,12 @@ function App() {
       type,
     };
     setEvents((prevEvents) => [...prevEvents, newEvent]);
-    setTimeout(() => {
-      setEvents((prevEvents) => prevEvents.filter((e) => e.id !== newEvent.id));
-    }, 5000);
   };
+
+  const removeEvent = (id: number) => {
+    setEvents((prevEvents) => prevEvents.filter((e) => e.id !== id));
+  };
+
 
   useEffect(() => {
     EventsOn("reception-started", (fileName) =>
@@ -120,6 +129,7 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "d") {
+        setIsDowntime(true);
         if (recibir) {
           ToggleServerDowntime(true);
         } else {
@@ -130,6 +140,7 @@ function App() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === "d") {
+        setIsDowntime(false);
         if (recibir) {
           ToggleServerDowntime(false);
         } else {
@@ -205,10 +216,22 @@ function App() {
       data-theme="synthwave"
       className="flex flex-col min-h-screen bg-base-200"
     >
+      {localIP && (
+        <div className="text-xs text-start text-base-content/70 m-2">
+          Tu IP: <span className="font-mono font-bold">{localIP}</span>
+        </div>
+      )}
       <div className="toast toast-top toast-end z-50">
         {events.map((event) => (
-          <div key={event.id} className={`alert alert-${event.type} shadow-lg`}>
+          <div key={event.id} className={`alert alert-${event.type} shadow-lg flex justify-between items-start gap-4`}>
             <span>{event.text}</span>
+            <button
+              onClick={() => removeEvent(event.id)}
+              className="btn btn-xs btn-circle btn-ghost"
+              title="Cerrar"
+            >
+              <Icon icon="mdi:close" width="16" height="16" />
+            </button>
           </div>
         ))}
       </div>
@@ -218,7 +241,7 @@ function App() {
         className="modal modal-bottom sm:modal-middle"
         ref={modalRef}
       >
-        <div className="modal-box">
+        <div className={`modal-box ${isDowntime ? "bg-error text-error-content" : ""}`}>
           <div className="w-full flex flex-col items-center gap-2">
             <h3 className="font-bold text-lg text-primary">
               {recibir ? "Recibiendo Archivos" : "Enviando Archivos"}
@@ -229,9 +252,9 @@ function App() {
                 : `Archivo ${progress.currentFile} de ${progress.totalFiles}: ${progress.fileName}`}
             </span>
             {progress.arqs !== undefined && (
-               <span className="text-warning text-xs font-bold">
-                 ARQs (Retransmisiones): {progress.arqs}
-               </span>
+              <span className="text-warning text-xs font-bold">
+                ARQs (Retransmisiones): {progress.arqs}
+              </span>
             )}
             {!recibir && (
               <span className="text-secondary text-xs">
@@ -246,6 +269,9 @@ function App() {
             <span className="font-mono">
               {Math.round((progress.sent / progress.total) * 100 || 0)}%
             </span>
+            <span className="text-xs text-base-content/50 mt-2">
+              Presione D para simular downtime
+            </span>
           </div>
         </div>
       </dialog>
@@ -257,17 +283,15 @@ function App() {
 
         <div className="tabs tabs-boxed flex gap-4">
           <a
-            className={`tab ${
-              !recibir ? "tab-active" : ""
-            } text-secondary bg-secondary-content rounded-2xl`}
+            className={`tab ${!recibir ? "tab-active" : ""
+              } text-secondary bg-secondary-content rounded-2xl`}
             onClick={() => recibir && handleMode()}
           >
             Transmitir
           </a>
           <a
-            className={`tab ${
-              recibir ? "tab-active" : ""
-            } bg-secondary-content text-secondary rounded-2xl`}
+            className={`tab ${recibir ? "tab-active" : ""
+              } bg-secondary-content text-secondary rounded-2xl`}
             onClick={() => !recibir && handleMode()}
           >
             Recibir
@@ -283,9 +307,8 @@ function App() {
           <div className="w-full max-w-xl flex flex-col items-center gap-4">
             <div className="self-center">
               <label
-                className={`swap swap-rotate btn btn-ghost px-4 ${
-                  enviando ? "btn-disabled" : ""
-                }`}
+                className={`swap swap-rotate btn btn-ghost px-4 ${enviando ? "btn-disabled" : ""
+                  }`}
                 title="Cambiar protocolo (TCP/UDP)"
               >
                 {/* El checkbox controla el estado de la animación y el valor TCP/UDP */}
